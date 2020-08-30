@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>images/prettyeq.png</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Gui</class>
+ <widget class="QDialog" name="Gui">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1152</width>
+    <height>648</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1152</width>
+    <height>648</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1152</width>
+    <height>648</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Gui</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <widget class="QMenuBar" name="menubar">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <widget class="QMenu" name="menuOptions">
+      <property name="title">
+       <string>Options</string>
+      </property>
+      <addaction name="actionQuit"/>
+     </widget>
+     <addaction name="menuOptions"/>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGraphicsView" name="graphicsView"/>
+   </item>
+  </layout>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
