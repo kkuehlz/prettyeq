@@ -108,7 +108,7 @@ static void sink_input_callback(pa_context *c, const pa_sink_input_info *i, int 
         const char *app_name;
         app_name = pa_proplist_gets(i->proplist, PA_PROP_APPLICATION_NAME);
         fprintf(stderr, "new sink-input: name=%s, index=%d, sink=%d\n", app_name, i->index, i->sink);
-        pa_operation_unref(pa_context_move_sink_input_by_name(c, i->index, SINK_NAME, success_callback, NULL));
+        pa_operation_unref(pa_context_move_sink_input_by_name(c, i->index, SINK_NAME, NULL, NULL));
     } else {
         /* Pulseaudio keeps sink state, so if the user changed the prettyeq
          * playback stream volume, we reset back to 100% here. This is so the
