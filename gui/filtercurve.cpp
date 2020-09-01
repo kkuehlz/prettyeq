@@ -27,12 +27,12 @@ void FilterCurve::setColorState(ColorState state)
     this->update();
 }
 
-QPen FilterCurve::getActivePen() const
+const QPen& FilterCurve::getActivePen() const
 {
     return pens[colorState];
 }
 
-QBrush FilterCurve::getActiveBrush() const
+const QBrush& FilterCurve::getActiveBrush() const
 {
     return brushes[colorState];
 }

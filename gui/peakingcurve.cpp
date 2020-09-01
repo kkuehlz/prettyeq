@@ -6,6 +6,7 @@
 #define MIN_WIDTH 40
 #define MAX_WIDTH 500
 #define SLOPE 10
+#define SPLINE_CAPACITY 16
 
 PeakingCurve::PeakingCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent) : QObject(parent), FilterCurve(pen, brush, guiOnly)
 {
@@ -14,38 +15,25 @@ PeakingCurve::PeakingCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent
     p0 = QPointF(0, 0);
     ip = QPointF(100, 0);
     p1 = QPointF(200, 0);
-
     c1 = QPointF((p0.x() + ip.x()) / 2, ip.y());
     c2 = QPointF((ip.x() + p1.x()) / 2, ip.y());
+
+    lineSpline.reserve(SPLINE_CAPACITY);
+    fillSpline.reserve(SPLINE_CAPACITY);
+    updateSplineGeometry();
 }
 
 QRectF PeakingCurve::boundingRect() const
 {
-    /* Top left of the left spline, bottom right of right spline. */
-    QPainterPath lspline = splinePainter(SplineLeft);
-    QPainterPath rspline = splinePainter(SplineRight);
-    Q_ASSERT(lspline.boundingRect().bottomRight() == rspline.boundingRect().bottomLeft());
-    return QRectF(lspline.boundingRect().topLeft(), rspline.boundingRect().bottomRight());
+    return fillSpline.boundingRect();
 }
 
 void PeakingCurve::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(getActivePen());
-
-    /* Left spline */
-    QPainterPath lspline = splinePainter(SplineLeft);
-    painter->drawPath(lspline);
-    lspline.lineTo(ip.x(), 0);
-    lspline.lineTo(p0);
-    painter->fillPath(lspline, getActiveBrush());
-
-    /* Right spline */
-    QPainterPath rspline = splinePainter(SplineRight);
-    painter->drawPath(rspline);
-    rspline.lineTo(ip.x(), 0);
-    rspline.lineTo(ip);
-    painter->fillPath(rspline, getActiveBrush());
+    painter->drawPath(lineSpline);
+    painter->fillPath(fillSpline, getActiveBrush());
 
 #if 0
     // debugging - draw control points
@@ -69,27 +57,29 @@ void PeakingCurve::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 #endif
 }
 
-QPainterPath PeakingCurve::splinePainter(SplinePart whichSpline) const
-{
-    QPainterPath splinePart;
-    switch(whichSpline) {
-    case SplineLeft:
-        splinePart.moveTo(p0);
-        splinePart.quadTo(c1, ip);
-        break;
-    case SplineRight:
-        splinePart.moveTo(ip);
-        splinePart.quadTo(c2, p1);
-        break;
-    default:
-        Q_ASSERT(0);
-    }
-    return splinePart;
-}
-
 QPointF PeakingCurve::controlPoint() const
 {
     return mapToScene(ip);
+}
+
+void PeakingCurve::updateSplineGeometry()
+{
+    lineSpline.clear();
+    lineSpline.moveTo(p0);
+    lineSpline.quadTo(c1, ip);
+    lineSpline.moveTo(ip);
+    lineSpline.quadTo(c2, p1);
+    Q_ASSERT(lineSpline.elementCount() == 8);
+    Q_ASSERT(lineSpline.capacity() == SPLINE_CAPACITY);
+
+    fillSpline.clear();
+    fillSpline.moveTo(p0);
+    fillSpline.quadTo(c1, ip);
+    fillSpline.moveTo(ip);
+    fillSpline.quadTo(c2, p1);
+    fillSpline.lineTo(p0);
+    Q_ASSERT(fillSpline.elementCount() == 9);
+    Q_ASSERT(fillSpline.capacity() == SPLINE_CAPACITY);
 }
 
 void PeakingCurve::pointPositionChanged(CurvePoint *point)
@@ -101,6 +91,7 @@ void PeakingCurve::pointPositionChanged(CurvePoint *point)
     p1.setX(p1.x() + delta.x());
     c1 = QPointF((p0.x() + ip.x()) / 2, ip.y());
     c2 = QPointF((ip.x() + p1.x()) / 2, ip.y());
+    updateSplineGeometry();
     prepareGeometryChange();
     this->update();
     emit resync(this);
@@ -116,6 +107,7 @@ void PeakingCurve::pointSlopeChanged(int delta)
         p1.setX(p1x);
         c1 = QPointF((p0.x() + ip.x()) / 2, ip.y());
         c2 = QPointF((ip.x() + p1.x()) / 2, ip.y());
+        updateSplineGeometry();
         prepareGeometryChange();
         this->update();
         emit resync(this);

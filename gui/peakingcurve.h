@@ -21,9 +21,11 @@ public:
     explicit PeakingCurve(QPen pen, QBrush brush, bool guiOnly = false, QObject *parent = nullptr);
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
-    QPainterPath splinePainter(SplinePart whichSpline) const;
 
     QPointF controlPoint() const override;
+
+private:
+    void updateSplineGeometry();
 
 public slots:
     void pointPositionChanged(CurvePoint *point);
@@ -34,6 +36,7 @@ signals:
 
 private:
     QPointF p0, p1, c1, c2, ip;
+    QPainterPath lineSpline, fillSpline;
 };
 
 #endif // PEAKINGCURVE_H

@@ -27,8 +27,8 @@ public:
 signals:
 
 protected:
-    QPen getActivePen() const;
-    QBrush getActiveBrush() const;
+    const QPen& getActivePen() const;
+    const QBrush& getActiveBrush() const;
 
 protected:
     ShimFilterPtr filter;
