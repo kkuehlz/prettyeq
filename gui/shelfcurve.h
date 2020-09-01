@@ -1,6 +1,7 @@
 #ifndef SHELFCURVE_H
 #define SHELFCURVE_H
 
+#include "curvepoint.h"
 #include "filtercurve.h"
 #include <QBrush>
 #include <QGraphicsItem>
@@ -30,7 +31,7 @@ private:
     QPainterPath bezierPainter() const;
 
 public slots:
-    void pointPositionChanged(qreal dx, qreal dy);
+    void pointPositionChanged(CurvePoint *point);
     virtual void pointSlopeChanged(int delta) = 0;
 signals:
     void resync(FilterCurve *curve);

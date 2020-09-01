@@ -92,12 +92,13 @@ QPointF PeakingCurve::controlPoint() const
     return mapToScene(ip);
 }
 
-void PeakingCurve::pointPositionChanged(qreal dx, qreal dy)
+void PeakingCurve::pointPositionChanged(CurvePoint *point)
 {
-    QPointF delta(dx, dy);
-    ip += delta;
-    p0.setX(p0.x() + dx);
-    p1.setX(p1.x() + dx);
+    QPointF curvePoint = mapFromScene(point->pos());
+    QPointF delta = curvePoint - ip;
+    ip = curvePoint;
+    p0.setX(p0.x() + delta.x());
+    p1.setX(p1.x() + delta.x());
     c1 = QPointF((p0.x() + ip.x()) / 2, ip.y());
     c2 = QPointF((ip.x() + p1.x()) / 2, ip.y());
     prepareGeometryChange();

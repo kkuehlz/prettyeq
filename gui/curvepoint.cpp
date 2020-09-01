@@ -15,7 +15,6 @@ CurvePoint::CurvePoint(QBrush normalBrush, QBrush lightBrush, QObject *parent)
     setZValue(100001);
     hide();
     setFlags(GraphicsItemFlag::ItemIsSelectable | GraphicsItemFlag::ItemIsMovable);
-    lastPos = pos();
 }
 
 QRectF CurvePoint::boundingRect() const
@@ -39,44 +38,24 @@ void CurvePoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 
 }
 
-void CurvePoint::setPos(const QPointF &pos)
-{
-    QGraphicsItem::setPos(pos);
-    lastPos = pos;
-}
-
-void CurvePoint::setPos(qreal x, qreal y)
-{
-    QGraphicsItem::setPos(x, y);
-    lastPos = QPointF(x, y);
-}
-
 void CurvePoint::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     QGraphicsItem::mouseMoveEvent(event);
     if (scene() && event->type() == QGraphicsSceneMouseEvent::GraphicsSceneMouseMove) {
-        QPointF delta = pos() - lastPos;
 
         /* x bounds detection */
-        if (scene()->sceneRect().x() >= mapToScene(boundingRect().center()).x()) {
+        if (scene()->sceneRect().x() >= mapToScene(boundingRect().center()).x())
             setPos(scene()->sceneRect().x(), pos().y());
-            delta.setX(0);
-        } else if (scene()->sceneRect().x() + scene()->width() <= mapToScene(boundingRect().center()).x()) {
+        else if (scene()->sceneRect().x() + scene()->width() <= mapToScene(boundingRect().center()).x())
             setPos(scene()->sceneRect().x() + scene()->width(), pos().y());
-            delta.setX(0);
-        }
 
         /* y bounds detection */
-        if (scene()->sceneRect().y() >= mapToScene(boundingRect().center()).y()) {
+        if (scene()->sceneRect().y() >= mapToScene(boundingRect().center()).y())
             setPos(pos().x(), scene()->sceneRect().y());
-            delta.setY(0);
-        } else if (scene()->sceneRect().y() + scene()->height() <= mapToScene(boundingRect().center()).y()) {
+        else if (scene()->sceneRect().y() + scene()->height() <= mapToScene(boundingRect().center()).y())
             setPos(pos().x(), scene()->sceneRect().y() + scene()->sceneRect().height());
-            delta.setY(0);
-        }
 
-        lastPos = pos();
-        emit pointPositionChanged(delta.x(), delta.y());
+        emit pointPositionChanged(this);
     }
 }
 
@@ -91,10 +70,4 @@ void CurvePoint::wheelEvent(QGraphicsSceneWheelEvent *event)
         wheelDeltaSum = 0;
         emit pointSlopeChanged(1);
     }
-}
-
-void CurvePoint::resync(FilterCurve *curve)
-{
-    setPos(curve->controlPoint());
-    this->update();
 }

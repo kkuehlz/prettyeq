@@ -1,5 +1,5 @@
-#include "shelfcurve.h"
 #include "macro.h"
+#include "shelfcurve.h"
 #include <QDebug>
 #include <QGraphicsScene>
 #include <QPainter>
@@ -86,13 +86,13 @@ qreal ShelfCurve::slope() const
     return qAbs(bezierPainter().slopeAtPercent(0.7)) + 0.5;
 }
 
-void ShelfCurve::pointPositionChanged(qreal dx, qreal dy)
-{
-    QPointF delta(dx, dy);
+void ShelfCurve::pointPositionChanged(CurvePoint *point) {
+    QPointF curvePoint = mapFromScene(point->pos());
+    QPointF delta = curvePoint - p1;
     p0.setY(p0.y() + delta.y());
-    p1 += delta;
-    p2.setX(p2.x() + dx);
-    p3.setX(p3.x() + dx);
+    p1 = curvePoint;
+    p2.setX(p2.x() + delta.x());
+    p3.setX(p3.x() + delta.x());
     prepareGeometryChange();
     this->update();
     emit resync(this);

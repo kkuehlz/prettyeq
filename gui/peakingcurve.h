@@ -5,6 +5,7 @@
 #include <QGraphicsItem>
 #include <QObject>
 #include <QPen>
+#include "curvepoint.h"
 #include "filtercurve.h"
 
 typedef enum SplinePart {
@@ -25,7 +26,7 @@ public:
     QPointF controlPoint() const override;
 
 public slots:
-    void pointPositionChanged(qreal dx, qreal dy);
+    void pointPositionChanged(CurvePoint *point);
     void pointSlopeChanged(int delta);
 signals:
     void resync(FilterCurve *curve);

@@ -137,19 +137,15 @@ void Gui::addPeakingEq(int frequency, QPen curvePen, QBrush filterBrush, QBrush 
 
     /* point signals */
     QObject::connect(point,
-                  SIGNAL(pointPositionChanged(qreal, qreal)),
+                  SIGNAL(pointPositionChanged(CurvePoint*)),
                   curve,
-                  SLOT(pointPositionChanged(qreal, qreal)));
+                  SLOT(pointPositionChanged(CurvePoint*)));
     QObject::connect(point,
                   SIGNAL(pointSlopeChanged(int)),
                   curve,
                   SLOT(pointSlopeChanged(int)));
 
     /* curve signals */
-    QObject::connect(curve,
-                  SIGNAL(resync(FilterCurve*)),
-                  point,
-                  SLOT(resync(FilterCurve*)));
     QObject::connect(curve,
                   SIGNAL(resync(FilterCurve*)),
                   hover,
@@ -178,19 +174,15 @@ void Gui::addLowShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush
 
     /* point signals */
     QObject::connect(point,
-                     SIGNAL(pointPositionChanged(qreal, qreal)),
+                     SIGNAL(pointPositionChanged(CurvePoint*)),
                      curve,
-                     SLOT(pointPositionChanged(qreal, qreal)));
+                     SLOT(pointPositionChanged(CurvePoint*)));
     QObject::connect(point,
                      SIGNAL(pointSlopeChanged(int)),
                      curve,
                      SLOT(pointSlopeChanged(int)));
 
     /* curve signals */
-    QObject::connect(curve,
-                  SIGNAL(resync(FilterCurve*)),
-                  point,
-                  SLOT(resync(FilterCurve*)));
     QObject::connect(curve,
                   SIGNAL(resync(FilterCurve*)),
                   hover,
@@ -219,19 +211,15 @@ void Gui::addHighShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrus
 
     /* point signals */
     QObject::connect(point,
-                     SIGNAL(pointPositionChanged(qreal, qreal)),
+                     SIGNAL(pointPositionChanged(CurvePoint*)),
                      curve,
-                     SLOT(pointPositionChanged(qreal, qreal)));
+                     SLOT(pointPositionChanged(CurvePoint*)));
     QObject::connect(point,
                      SIGNAL(pointSlopeChanged(int)),
                      curve,
                      SLOT(pointSlopeChanged(int)));
 
     /* curve signals */
-    QObject::connect(curve,
-                  SIGNAL(resync(FilterCurve*)),
-                  point,
-                  SLOT(resync(FilterCurve*)));
     QObject::connect(curve,
                   SIGNAL(resync(FilterCurve*)),
                   hover,
