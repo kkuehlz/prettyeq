@@ -7,6 +7,8 @@ HighShelfCurve::HighShelfCurve(QPen pen, QBrush brush, bool guiOnly, QObject *pa
     p3 = QPointF(-330, 0);
     p1 = QPointF((p3.x() - p0.x()) * 0.3, p0.y());
     p2 = QPointF((p1.x() + p3.x())/ 2, p3.y());
+
+    updateCurveGeometry();
 }
 
 HighShelfCurve::~HighShelfCurve()
@@ -25,6 +27,7 @@ void HighShelfCurve::pointSlopeChanged(int delta)
     int offset = -delta * SLOPE_DELTA;
     if ((qAbs(p3.x() - p2.x()) - offset < SLOPE_MAX  || !reduce) && (p2.x() - offset > p3.x() || reduce)) {
         p2.setX(p2.x() - offset);
+        updateCurveGeometry();
         this->update();
         emit resync(this);
         emit filterParamsChanged(filter, this);

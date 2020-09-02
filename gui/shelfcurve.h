@@ -11,6 +11,9 @@
 #define SLOPE_DELTA 20
 #define SLOPE_MAX 330
 
+class LowShelfCurve;
+class HighShelfCurve;
+
 class ShelfCurve : public QObject, public FilterCurve
 {
     Q_OBJECT
@@ -29,6 +32,7 @@ protected:
 
 private:
     QPainterPath bezierPainter() const;
+    void updateCurveGeometry();
 
 public slots:
     void pointPositionChanged(CurvePoint *point);
@@ -37,8 +41,11 @@ signals:
     void resync(FilterCurve *curve);
     void filterParamsChanged(ShimFilterPtr filter, ShelfCurve *curve);
 
-protected:
+private:
     QPointF p0, p1, p2, p3;
+    QPainterPath lineCurve, fillCurve;
+    friend class LowShelfCurve;
+    friend class HighShelfCurve;
 };
 
 #endif // SHELFCURVE_H

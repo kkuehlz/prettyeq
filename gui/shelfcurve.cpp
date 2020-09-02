@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QPainterPath>
+#define CURVE_CAPACITY 16
 
 ShelfCurve::ShelfCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent)
     : QObject(parent), FilterCurve(pen, brush, guiOnly)
@@ -13,6 +14,9 @@ ShelfCurve::ShelfCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent)
     p1 = QPointF(0, 0);
     p2 = QPointF(0, 0);
     p3 = QPointF(0, 0);
+
+    lineCurve.reserve(CURVE_CAPACITY);
+    fillCurve.reserve(CURVE_CAPACITY);
 }
 
 ShelfCurve::~ShelfCurve()
@@ -24,11 +28,8 @@ void ShelfCurve::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(getActivePen());
-    QPainterPath shelf = bezierPainter();
-    painter->drawPath(shelf);
-    shelf.lineTo(0, 0);
-    shelf.lineTo(p0);
-    painter->fillPath(shelf, getActiveBrush());
+    painter->drawPath(lineCurve);
+    painter->fillPath(fillCurve, getActiveBrush());
 #if 0
     // debugging - draw control points
     QPen rpen(Qt::red);
@@ -93,6 +94,7 @@ void ShelfCurve::pointPositionChanged(CurvePoint *point) {
     p1 = curvePoint;
     p2.setX(p2.x() + delta.x());
     p3.setX(p3.x() + delta.x());
+    updateCurveGeometry();
     prepareGeometryChange();
     this->update();
     emit resync(this);
@@ -105,6 +107,23 @@ QPainterPath ShelfCurve::bezierPainter() const
     shelf.moveTo(p0);
     shelf.cubicTo(p1, clampP2(), p3);
     return shelf;
+}
+
+void ShelfCurve::updateCurveGeometry()
+{
+    lineCurve.clear();
+    lineCurve.moveTo(p0);
+    lineCurve.cubicTo(p1, clampP2(), p3);
+    Q_ASSERT(lineCurve.elementCount() == 4);
+    Q_ASSERT(lineCurve.capacity() == CURVE_CAPACITY);
+
+    fillCurve.clear();
+    fillCurve.moveTo(p0);
+    fillCurve.cubicTo(p1, clampP2(), p3);
+    fillCurve.lineTo(0, 0);
+    fillCurve.lineTo(p0);
+    Q_ASSERT(fillCurve.elementCount() <= 6);
+    Q_ASSERT(fillCurve.capacity() == CURVE_CAPACITY);
 }
 
 QRectF ShelfCurve::boundingRect() const
