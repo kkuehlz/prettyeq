@@ -30,6 +30,8 @@ static const pa_sample_spec sample_spec = {
 
 //=============================================================================
 
+static _Atomic bool bypass;
+
 typedef struct FilterParams {
     float a[3];
     float b[3];
@@ -207,6 +209,9 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
             return;
         }
 
+        if (bypass)
+            goto play_frame;
+
 #ifndef EQ_DISABLE
         for (int k = 0; k < NUM_FILTERS; k++) {
             FilterParams *params = atomic_load_explicit(&filters[k].params, __ATOMIC_RELAXED);
@@ -247,6 +252,7 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
         }
 #endif // EQ_DISABLE
 
+play_frame:
         for (;;) {
             size_t data_length = length;
             uint8_t *output_data = NULL;
@@ -377,6 +383,9 @@ int pretty_init() {
         }
     }
 
+    /* Start with bypass mode disabled. */
+    atomic_store(&bypass, false);
+
     /* Initialize pulseaudio mainloop. */
     if ( !(m = pa_threaded_mainloop_new())) {
         fprintf(stderr, "pa_mainloop_new() failed.");
@@ -501,4 +510,9 @@ void pretty_set_high_shelf(PrettyFilter *filter, float f0, float S, float db_gai
     filter->__cx_params = atomic_exchange_explicit(&filter->params,
                                                    filter->__cx_params,
                                                    __ATOMIC_RELAXED);
+}
+
+void pretty_enable_bypass(bool should_bypass)
+{
+    atomic_store_explicit(&bypass, should_bypass, __ATOMIC_RELAXED);
 }

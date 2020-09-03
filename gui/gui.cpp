@@ -114,6 +114,7 @@ Gui::Gui(QWidget *parent)
     addPeakingEq(750,  PinkFilterPen, 	PinkFilterBrush, 	PinkInnerRadiusBrush, 	PinkOuterRadiusBrush);
     addPeakingEq(1500, BlueFilterPen, 	BlueFilterBrush, 	BlueInnerRadiusBrush, 	BlueOuterRadiusBrush);
     addPeakingEq(3500, PurpleFilterPen, PurpleFilterBrush, 	PurpleInnerRadiusBrush, PurpleOuterRadiusBrush);
+    connectBypassButton();
 
     maybeShowInSystemTray();
 }
@@ -302,6 +303,13 @@ qreal Gui::unlerpTick(qreal f)
     return LINEAR_REMAP(f, tp->getFrequency(), tq->getFrequency(), tp->getX(), tq->getX());
 }
 
+void Gui::connectBypassButton()
+{
+    QObject::connect(ui->pushButton, &QAbstractButton::clicked, this, [&](bool checked){
+        PrettyShim::getInstance().enable_bypass(checked);
+    });
+}
+
 //=============================================================================
 
 void Gui::maybeShowInSystemTray()
@@ -349,6 +357,8 @@ void Gui::on_actionQuit_triggered()
 void Gui::trayActivated(QSystemTrayIcon::ActivationReason reason)
 {
     this->show();
+    this->raise();
+    this->activateWindow();
 }
 
 //=============================================================================

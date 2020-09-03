@@ -56,6 +56,10 @@ public:
         pretty_set_high_shelf(filter, f0, S, db_gain);
     }
 
+    void enable_bypass(bool should_bypass) {
+        pretty_enable_bypass(should_bypass);
+    }
+
 };
 
 #endif // PRETTYSHIM_H

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define SINK_NAME "prettyeq"
@@ -45,6 +46,9 @@ void pretty_set_low_shelf(PrettyFilter *filter, float f0, float S, float db_gain
 
 PRETTY_EXPORT
 void pretty_set_high_shelf(PrettyFilter *filter, float f0, float S, float db_gain);
+
+PRETTY_EXPORT
+void pretty_enable_bypass(bool should_bypass);
 
 #ifdef __cplusplus
 }
