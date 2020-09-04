@@ -4,9 +4,10 @@
 #include <QGraphicsSceneHoverEvent>
 #include <QPainter>
 
-static const unsigned int Default   = 1;
-static const unsigned int Collision = 1 << 1;
-static const unsigned int Hover     = 1 << 2;
+static const unsigned int Default     = 1;
+static const unsigned int Collision   = 1 << 1;
+static const unsigned int Hover       = 1 << 2;
+static const unsigned int ContextMenu = 1 << 3;
 
 EqHoverer::EqHoverer(FilterCurve *curve, CurvePoint *point, QObject *parent) : QObject(parent), curve(curve), point(point), pointState(0)
 {
@@ -42,7 +43,7 @@ void EqHoverer::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 
     bool nocollide = true;
     for(QGraphicsItem *i : collidingItems()) {
-        EqHoverer *cc = dynamic_cast<EqHoverer*>(i);
+        EqHoverer *cc = qgraphicsitem_cast<EqHoverer*>(i);
         if (cc && cc != this) {
             if (this->isUnderMouse() || cc->isUnderMouse()) {
                 pointState |= Collision;
@@ -62,7 +63,6 @@ void EqHoverer::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 #if 0
     qDebug() << "hoverEnterEvent();";
 #endif
-    curve->setColorState(PrettyState);
     pointState |= Hover;
     maybeShowPoint();
 }
@@ -72,8 +72,24 @@ void EqHoverer::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 #if 0
     qDebug() << "hoverLeaveEvent();";
 #endif
-    curve->setColorState(DefaultState);
     pointState &= ~Hover;
+    maybeShowPoint();
+}
+
+void EqHoverer::contextMenuToggle(bool on) {
+    int contextBit = ContextMenu * static_cast<int>(on);
+    pointState |= contextBit;
+    pointState &= (~ContextMenu | contextBit);
+    maybeShowPoint();
+}
+
+void EqHoverer::reset()
+{
+    /* Order of these calls *does* matter here because
+     * resetting the point signals resync. */
+    point->reset();
+    curve->reset();
+    pointState |= Default;
     maybeShowPoint();
 }
 

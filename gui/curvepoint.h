@@ -14,6 +14,8 @@ public:
     explicit CurvePoint(QBrush normalBrush, QBrush lightBrush, QObject *parent = nullptr);
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    void setResetPos(QPointF resetPoint);
+    void reset();
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void wheelEvent(QGraphicsSceneWheelEvent *event) override;
@@ -24,6 +26,7 @@ signals:
 
 private:
     QBrush normalBrush, lightBrush;
+    QPointF sceneResetPoint = QPointF(0, 0);
     int wheelDeltaSum = 0;
 };
 

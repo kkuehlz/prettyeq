@@ -38,6 +38,18 @@ void CurvePoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 
 }
 
+void CurvePoint::setResetPos(QPointF resetPoint)
+{
+    sceneResetPoint = resetPoint;
+    setPos(sceneResetPoint);
+}
+
+void CurvePoint::reset()
+{
+    setPos(sceneResetPoint);
+    emit pointPositionChanged(this);
+}
+
 void CurvePoint::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     QGraphicsItem::mouseMoveEvent(event);

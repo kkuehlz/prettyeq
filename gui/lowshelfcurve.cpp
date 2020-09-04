@@ -3,11 +3,7 @@
 LowShelfCurve::LowShelfCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent)
     : ShelfCurve(pen, brush, guiOnly, parent)
 {
-    p0 = QPointF(0, 0);
-    p3 = QPointF(330, 0);
-    p1 = QPointF((p3.x() - p0.x()) * 0.3, p0.y());
-    p2 = QPointF((p1.x() + p3.x())/ 2, p3.y());
-
+    reset();
     updateCurveGeometry();
 }
 
@@ -32,4 +28,14 @@ void LowShelfCurve::pointSlopeChanged(int delta)
         emit resync(this);
         emit filterParamsChanged(filter, this);
     }
+}
+
+void LowShelfCurve::reset()
+{
+    p0 = QPointF(0, 0);
+    p3 = QPointF(330, 0);
+    p1 = QPointF((p3.x() - p0.x()) * 0.3, p0.y());
+    p2 = QPointF((p1.x() + p3.x())/ 2, p3.y());
+    updateCurveGeometry();
+    this->update();
 }

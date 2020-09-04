@@ -22,6 +22,7 @@ public:
     explicit FilterCurve(QPen togglePen, QBrush toggleBrush, bool guiOnly = false);
     virtual ~FilterCurve();
     virtual QPointF controlPoint() const = 0;
+    virtual void reset() = 0;
     void setColorState(ColorState state);
 
 signals:

@@ -25,6 +25,7 @@ SOURCES += \
     lowshelfcurve.cpp \
     main.cpp \
     peakingcurve.cpp \
+    prettygraphicsscene.cpp \
     runguard.cpp \
     shelfcurve.cpp \
     unixsignalhandler.cpp
@@ -39,6 +40,7 @@ HEADERS += \
     lowshelfcurve.h \
     macro.h \
     peakingcurve.h \
+    prettygraphicsscene.h \
     prettyshim.h \
     runguard.h \
     shelfcurve.h \

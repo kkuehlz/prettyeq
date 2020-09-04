@@ -14,6 +14,9 @@ public:
     explicit EqHoverer(FilterCurve *curve, CurvePoint *point, QObject *parent = nullptr);
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+
+    void contextMenuToggle(bool on = false);
+    void reset();
 protected:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
@@ -25,9 +28,11 @@ public slots:
 
 signals:
 
-private:
+public:
     FilterCurve *curve;
     CurvePoint *point;
+
+private:
     unsigned int pointState;
 };
 

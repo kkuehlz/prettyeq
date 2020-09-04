@@ -16,6 +16,10 @@ protected:
 
 public slots:
     void pointSlopeChanged(int delta) override;
+
+    // FilterCurve interface
+public:
+    void reset() override;
 };
 
 #endif // LOWSHELFCURVE_H

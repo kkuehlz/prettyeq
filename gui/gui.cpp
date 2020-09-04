@@ -1,3 +1,4 @@
+#include "curvepoint.h"
 #include "eqhoverer.h"
 #include "frequencytick.h"
 #include "gui.h"
@@ -5,8 +6,8 @@
 #include "lowshelfcurve.h"
 #include "macro.h"
 #include "peakingcurve.h"
+#include "prettygraphicsscene.h"
 #include "prettyshim.h"
-#include "curvepoint.h"
 #include "ui_gui.h"
 
 #include <QBrush>
@@ -76,7 +77,7 @@ Gui::Gui(QWidget *parent)
     backgroundGradient.setSpread(QGradient::ReflectSpread);
     backgroundGradient.setColorAt(0.15, QColor(4, 38, 69));
     backgroundGradient.setColorAt(0.85, QColor(6, 17, 43));
-    scene = new QGraphicsScene(ui->graphicsView);
+    scene = new PrettyGraphicsScene(ui->graphicsView);
     scene->setSceneRect(XMIN, YMIN, WIDTH, HEIGHT);
     scene->setBackgroundBrush(QBrush(backgroundGradient));
 
@@ -161,7 +162,7 @@ void Gui::addPeakingEq(int frequency, QPen curvePen, QBrush filterBrush, QBrush 
     group->addToGroup(hover);
     group->setHandlesChildEvents(false);
     group->setPos(unlerpTick(frequency) - group->boundingRect().width() / 2, 0);
-    point->setPos(curve->controlPoint());
+    point->setResetPos(curve->controlPoint());
     scene->addItem(group);
     scene->addItem(point);
     addFilterItem(group, curve, point, hover);
@@ -198,7 +199,7 @@ void Gui::addLowShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush
     group->addToGroup(curve);
     group->addToGroup(hover);
     group->setPos(XMIN, 0);
-    point->setPos(curve->controlPoint());
+    point->setResetPos(curve->controlPoint());
     scene->addItem(group);
     scene->addItem(point);
     addFilterItem(group, curve, point, hover);
@@ -235,7 +236,7 @@ void Gui::addHighShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrus
     group->addToGroup(curve);
     group->addToGroup(hover);
     group->setPos(XMAX, 0);
-    point->setPos(curve->controlPoint());
+    point->setResetPos(curve->controlPoint());
     scene->addItem(group);
     scene->addItem(point);
     addFilterItem(group, curve, point, hover);

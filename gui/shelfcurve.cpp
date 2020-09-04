@@ -10,10 +10,6 @@ ShelfCurve::ShelfCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent)
     : QObject(parent), FilterCurve(pen, brush, guiOnly)
 {
     setZValue(100000);
-    p0 = QPointF(0, 0);
-    p1 = QPointF(0, 0);
-    p2 = QPointF(0, 0);
-    p3 = QPointF(0, 0);
 
     lineCurve.reserve(CURVE_CAPACITY);
     fillCurve.reserve(CURVE_CAPACITY);

@@ -15,7 +15,7 @@ Right now prettyeq only supports two-channel sound.
 ##### Filter types
 
 prettyeq has three filter types:
-* one **low shelf** filter mounted at 30Hz
+* one **low shelf** filter mounted at 20Hz
 * one **high shelf** filter mounted at 20kHz
 * five **peakingEQ** filters that can move freely
 

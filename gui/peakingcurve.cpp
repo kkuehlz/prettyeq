@@ -10,16 +10,11 @@
 
 PeakingCurve::PeakingCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent) : QObject(parent), FilterCurve(pen, brush, guiOnly)
 {
-    setZValue(100000); // TODO: move to interface
-
-    p0 = QPointF(0, 0);
-    ip = QPointF(100, 0);
-    p1 = QPointF(200, 0);
-    c1 = QPointF((p0.x() + ip.x()) / 2, ip.y());
-    c2 = QPointF((ip.x() + p1.x()) / 2, ip.y());
+    setZValue(100000);
 
     lineSpline.reserve(SPLINE_CAPACITY);
     fillSpline.reserve(SPLINE_CAPACITY);
+    reset();
     updateSplineGeometry();
 }
 
@@ -60,6 +55,18 @@ void PeakingCurve::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 QPointF PeakingCurve::controlPoint() const
 {
     return mapToScene(ip);
+}
+
+void PeakingCurve::reset()
+{
+    p0 = QPointF(0, 0);
+    ip = QPointF(100, 0);
+    p1 = QPointF(200, 0);
+    c1 = QPointF((p0.x() + ip.x()) / 2, ip.y());
+    c2 = QPointF((ip.x() + p1.x()) / 2, ip.y());
+    updateSplineGeometry();
+    prepareGeometryChange();
+    this->update();
 }
 
 void PeakingCurve::updateSplineGeometry()

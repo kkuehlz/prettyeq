@@ -24,6 +24,10 @@ public:
 
     QPointF controlPoint() const override;
 
+    // FilterCurve interface
+public:
+    void reset();
+
 private:
     void updateSplineGeometry();
 
