@@ -21,7 +21,7 @@ void PrettyGraphicsScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event
     }
 
     if (point) {
-        EqHoverer *hover;
+        EqHoverer *hover = nullptr;
         for (auto item : items()) {
             hover = qgraphicsitem_cast<EqHoverer*>(item);
             if (! hover)
@@ -33,11 +33,12 @@ void PrettyGraphicsScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *event
             }
         }
 
-        Q_ASSERT(hover);
         QMenu menu(event->widget());
         menu.addAction("Reset");
-        if (menu.exec(event->screenPos()))
+        if (menu.exec(event->screenPos())) {
+            Q_ASSERT(hover);
             hover->reset();
+        }
 
         for (auto item : items()) {
             EqHoverer *hover = qgraphicsitem_cast<EqHoverer*>(item);

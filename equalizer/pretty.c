@@ -11,7 +11,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #define NUM_FILTERS 7
-#define LATENCY_MAX_MS 100
+#define LATENCY_MAX_MS 30
 
 //=============================================================================
 
@@ -23,7 +23,7 @@ static pa_threaded_mainloop *m = NULL;
 
 static const pa_sample_spec sample_spec = {
     // https://freedesktop.org/software/pulseaudio/doxygen/sample_8h.html
-    .format = PA_SAMPLE_S16LE,
+    .format = PA_SAMPLE_FLOAT32LE,
     .rate = 44100,
     .channels = 2,
 };
@@ -215,13 +215,13 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
 #ifndef EQ_DISABLE
         for (int k = 0; k < NUM_FILTERS; k++) {
             FilterParams *params = atomic_load_explicit(&filters[k].params, __ATOMIC_RELAXED);
-            short *fp = (short*) input_data;
+            float *fp = (float*) input_data;
             float *xwin = filters[k].xwin;
             float *ywin = filters[k].ywin;
             float *a = params->a;
             float *b = params->b;
 
-            for (unsigned long i = 0; i < length / sizeof(short); i++) {
+            for (unsigned long i = 0; i < length / sizeof(float); i++) {
                 float f;
 
                 /* Slide x-window */
@@ -229,20 +229,16 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
                 xwin[1] = xwin[0];
                 xwin[0] = fp[i];
 
-                f = (float) fp[i];
+                f = fp[i];
                 f = (b[0] / a[0] * xwin[0]) +
                     (b[1] / a[0] * xwin[1]) +
                     (b[2] / a[0] * xwin[2]) -
                     (a[1] / a[0] * ywin[0]) -
                     (a[2] / a[0] * ywin[1]);
 
-                if (IS_DENORMAL(f)) {
+                if (IS_DENORMAL(f))
                     f = 0.0f;
-                } else if (f > SHRT_MAX) {
-                    f = SHRT_MAX;
-                } else if (f < SHRT_MIN) {
-                    f = SHRT_MIN;
-                }
+
                 fp[i] = f;
 
                 /* Slide y-window */

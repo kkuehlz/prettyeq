@@ -77,7 +77,7 @@ void EqHoverer::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 }
 
 void EqHoverer::contextMenuToggle(bool on) {
-    int contextBit = ContextMenu * static_cast<int>(on);
+    int contextBit = (ContextMenu & static_cast<int>(on));
     pointState |= contextBit;
     pointState &= (~ContextMenu | contextBit);
     maybeShowPoint();
