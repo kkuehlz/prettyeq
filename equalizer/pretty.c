@@ -1,5 +1,3 @@
-#include "pretty.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
@@ -10,6 +8,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
+
+#include "arena.h"
+#include "pretty.h"
+
 #define NUM_FILTERS 7
 #define LATENCY_MAX_MS 30
 
@@ -32,6 +34,8 @@ static const pa_sample_spec sample_spec = {
 
 static _Atomic bool bypass;
 
+static arena_t *arena = NULL;
+
 typedef struct FilterParams {
     float a[3];
     float b[3];
@@ -44,7 +48,7 @@ struct _PrettyFilter {
 
     /* Temporary parameters for compare-exchange. */
     _Atomic (FilterParams*) params;
-    FilterParams* __cx_params;
+    FilterParams *storage;
 };
 static PrettyFilter filters[NUM_FILTERS];
 static int user_enabled_filters = 0;
@@ -69,13 +73,8 @@ static void cleanup() {
     if (m)
         pa_threaded_mainloop_free(m);
 
-    for (int i = 0; i < NUM_FILTERS; i++) {
-        if (filters[i].params)
-            free(filters[i].params);
-
-        if (filters[i].__cx_params)
-            free(filters[i].__cx_params);
-    }
+    if (arena)
+        arena_destroy(&arena);
 
     munlockall();
 }
@@ -97,7 +96,6 @@ static void sink_input_callback(pa_context *c, const pa_sink_input_info *i, int 
     if (is_last < 0) {
         fprintf(stderr, "Failed to get sink information: %s",
                         pa_strerror(pa_context_errno(c)));
-        quit(1);
         return;
     }
 
@@ -214,7 +212,9 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
 
 #ifndef EQ_DISABLE
         for (int k = 0; k < NUM_FILTERS; k++) {
-            FilterParams *params = atomic_load_explicit(&filters[k].params, __ATOMIC_RELAXED);
+            /* Swap in NULL to block a filter param update mid-iteration. */
+            FilterParams *params = atomic_exchange(&filters[k].params, NULL);
+
             float *fp = (float*) input_data;
             float *xwin = filters[k].xwin;
             float *ywin = filters[k].ywin;
@@ -245,6 +245,8 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
                 ywin[1] = ywin[0];
                 ywin[0] = f;
             }
+            /* Unblock any pending filter param updates. */
+            atomic_store(&filters[k].params, params);
         }
 #endif // EQ_DISABLE
 
@@ -343,10 +345,16 @@ static void context_state_callback(pa_context *c, void *userdata) {
 int pretty_init() {
     int r;
 
+    arena = arena_new(NUM_FILTERS * 2, sizeof(FilterParams));
+    if (!arena) {
+        fprintf(stderr, "Could not arena_new()");
+        r = -ENOMEM;
+        goto err;
+    }
+
     /* Initialize filters. */
     for (int i = 0; i < NUM_FILTERS; i++) {
-        FilterParams *params;
-        FilterParams *__cx_params;
+        FilterParams *start_params;
         PrettyFilter *filter = &filters[i];
 
         filter->xwin[0] = 0.0f;
@@ -355,21 +363,9 @@ int pretty_init() {
         filter->ywin[0] = 0.0f;
         filter->ywin[1] = 0.0f;
 
-        params = calloc(sizeof(FilterParams), 1);
-        if (!params) {
-            fprintf(stderr, "Could not calloc()");
-            r = -ENOMEM;
-            goto err;
-        }
-        atomic_store(&filter->params, params);
-
-        __cx_params = calloc(sizeof(FilterParams), 1);
-        if (!__cx_params) {
-            fprintf(stderr, "Could not calloc()");
-            r = -ENOMEM;
-            goto err;
-        }
-        filter->__cx_params = __cx_params;
+        start_params = arena_alloc(arena);
+        atomic_store(&filter->params, start_params);
+        filter->storage = start_params;
 
         /* We don't want to page fault reading filters in the audio loop. */
         r = mlock(&filter, sizeof(PrettyFilter));
@@ -439,76 +435,87 @@ int pretty_new_filter(PrettyFilter **filter) {
     return 0;
 }
 
-void pretty_set_peaking_eq(PrettyFilter *filter, float f0, float bandwidth, float db_gain) {
-    float A, alpha, w0, sinw0, cosw0;
-    float *a, *b;
+static inline void safe_update_audio_loop(PrettyFilter *filter, FilterParams *new_params) {
+    FilterParams *expected;
 
-    a = filter->__cx_params->a;
-    b = filter->__cx_params->b;
+    assert(filter);
+    assert(new_params);
+
+    do {
+        expected = filter->storage;
+        atomic_compare_exchange_strong(&filter->params, &expected, new_params);
+    } while (!expected);
+
+    arena_dealloc(arena, filter->storage);
+    filter->storage = new_params;
+}
+
+void pretty_set_peaking_eq(PrettyFilter *filter, float f0, float bandwidth, float db_gain) {
+    FilterParams *new_params;
+    float A, alpha, w0, sinw0, cosw0;
+
+    new_params = arena_alloc(arena);
 
     A = powf(10, db_gain/40);
     w0 = 2*M_PI*f0/sample_spec.rate;
     sinw0 = sinf(w0);
     cosw0 = cosf(w0);
     alpha = sinw0*sinhf(logf(2)/2 * bandwidth * w0/sinw0);
-    b[0] = 1 + alpha*A;
-    b[1] = -2 * cosw0;
-    b[2] = 1 - alpha*A;
-    a[0] = 1 + alpha/A;
-    a[1] = -2 * cosw0;
-    a[2] = 1 - alpha/A;
-    filter->__cx_params = atomic_exchange_explicit(&filter->params,
-                                                   filter->__cx_params,
-                                                   __ATOMIC_RELAXED);
+    new_params->b[0] = 1 + alpha*A;
+    new_params->b[1] = -2 * cosw0;
+    new_params->b[2] = 1 - alpha*A;
+    new_params->a[0] = 1 + alpha/A;
+    new_params->a[1] = -2 * cosw0;
+    new_params->a[2] = 1 - alpha/A;
+
+    safe_update_audio_loop(filter, new_params);
 }
 
 void pretty_set_low_shelf(PrettyFilter *filter, float f0, float S, float db_gain) {
+    FilterParams *new_params;
     float A, alpha, w0, sinw0, cosw0, sqrtA;
-    float *a, *b;
 
-    a = filter->__cx_params->a;
-    b = filter->__cx_params->b;
+    new_params = arena_alloc(arena);
+
     A = powf(10, db_gain / 40);
     w0 = 2*M_PI*f0/sample_spec.rate;
     sinw0 = sinf(w0);
     cosw0 = cosf(w0);
     sqrtA = sqrtf(A);
     alpha = sinw0/2 * sqrtf((A + 1/A) * (1/S - 1) + 2);
-    b[0] = A*((A + 1) - (A - 1)*cosw0 + 2*sqrtA*alpha);
-    b[1] = 2*A*((A - 1) - (A + 1)*cosw0);
-    b[2] = A*((A + 1) - (A - 1)*cosw0 - 2*sqrtA*alpha);
-    a[0] = (A + 1) + (A - 1)*cosw0 + 2*sqrtA*alpha;
-    a[1] = -2*((A - 1) + (A + 1)*cosw0);
-    a[2] = (A + 1) + (A - 1)*cosw0 - 2*sqrtA*alpha;
-    filter->__cx_params = atomic_exchange_explicit(&filter->params,
-                                                   filter->__cx_params,
-                                                   __ATOMIC_RELAXED);
+    new_params->b[0] = A*((A + 1) - (A - 1)*cosw0 + 2*sqrtA*alpha);
+    new_params->b[1] = 2*A*((A - 1) - (A + 1)*cosw0);
+    new_params->b[2] = A*((A + 1) - (A - 1)*cosw0 - 2*sqrtA*alpha);
+    new_params->a[0] = (A + 1) + (A - 1)*cosw0 + 2*sqrtA*alpha;
+    new_params->a[1] = -2*((A - 1) + (A + 1)*cosw0);
+    new_params->a[2] = (A + 1) + (A - 1)*cosw0 - 2*sqrtA*alpha;
+
+    safe_update_audio_loop(filter, new_params);
 }
 
 void pretty_set_high_shelf(PrettyFilter *filter, float f0, float S, float db_gain) {
+    FilterParams *new_params;
     float A, alpha, w0, sinw0, cosw0, sqrtA;
-    float *a, *b;
 
-    a = filter->__cx_params->a;
-    b = filter->__cx_params->b;
+    new_params = arena_alloc(arena);
+
     A = powf(10, db_gain / 40);
     w0 = 2*M_PI*f0/sample_spec.rate;
     sinw0 = sinf(w0);
     cosw0 = cosf(w0);
     sqrtA = sqrtf(A);
     alpha = sinw0/2 * sqrtf((A + 1/A) * (1/S - 1) + 2);
-    b[0] = A*((A + 1) + (A - 1)*cosw0 + 2*sqrtA*alpha);
-    b[1] = -2*A*((A - 1) + (A + 1)*cosw0);
-    b[2] = A*((A + 1) + (A - 1)*cosw0 - 2*sqrtA*alpha);
-    a[0] = (A + 1) - (A - 1)*cosw0 + 2*sqrtA*alpha;
-    a[1] = 2*((A - 1) - (A + 1)*cosw0);
-    a[2] = (A + 1) - (A - 1)*cosw0 - 2*sqrtA*alpha;
-    filter->__cx_params = atomic_exchange_explicit(&filter->params,
-                                                   filter->__cx_params,
-                                                   __ATOMIC_RELAXED);
+    new_params->b[0] = A*((A + 1) + (A - 1)*cosw0 + 2*sqrtA*alpha);
+    new_params->b[1] = -2*A*((A - 1) + (A + 1)*cosw0);
+    new_params->b[2] = A*((A + 1) + (A - 1)*cosw0 - 2*sqrtA*alpha);
+    new_params->a[0] = (A + 1) - (A - 1)*cosw0 + 2*sqrtA*alpha;
+    new_params->a[1] = 2*((A - 1) - (A + 1)*cosw0);
+    new_params->a[2] = (A + 1) - (A - 1)*cosw0 - 2*sqrtA*alpha;
+
+    safe_update_audio_loop(filter, new_params);
 }
 
 void pretty_enable_bypass(bool should_bypass)
 {
-    atomic_store_explicit(&bypass, should_bypass, __ATOMIC_RELAXED);
+    atomic_store(&bypass, should_bypass);
 }
