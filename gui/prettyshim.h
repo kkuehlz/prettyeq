@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QDebug>
+#include <complex>
 
 #include "pretty.h"
 
@@ -59,6 +60,19 @@ public:
     void enable_bypass(bool should_bypass) {
         pretty_enable_bypass(should_bypass);
     }
+
+    std::complex<float>* get_audio_data(unsigned int *N) {
+        std::complex<float> *data;
+        pretty_acquire_audio_data(&data, N);
+        return std::move(data);
+    }
+
+    void release_audio_data() {
+        pretty_release_audio_data();
+    }
+
+private:
+    AudioFFT *audio_fft;
 
 };
 

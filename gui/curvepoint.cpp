@@ -38,6 +38,12 @@ void CurvePoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 
 }
 
+int CurvePoint::type() const
+{
+    /* Make this type work with qgraphicsitem_cast */
+    return Type;
+}
+
 void CurvePoint::setResetPos(QPointF resetPoint)
 {
     sceneResetPoint = resetPoint;

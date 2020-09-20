@@ -26,7 +26,7 @@ public:
 
     // FilterCurve interface
 public:
-    void reset();
+    void reset() override;
 
 private:
     void updateSplineGeometry();

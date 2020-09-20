@@ -2,6 +2,7 @@
 #define MACRO_H
 
 #include <QPointF>
+
 #define F1   20
 #define F2   50
 #define F3   100

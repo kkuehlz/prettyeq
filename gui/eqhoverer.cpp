@@ -58,6 +58,12 @@ void EqHoverer::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     }
 }
 
+int EqHoverer::type() const
+{
+    /* Make this type work with qgraphicsitem_cast */
+    return Type;
+}
+
 void EqHoverer::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
 #if 0

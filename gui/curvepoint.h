@@ -14,6 +14,9 @@ public:
     explicit CurvePoint(QBrush normalBrush, QBrush lightBrush, QObject *parent = nullptr);
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    enum { Type = UserType + 2 };
+    int type() const override;
+
     void setResetPos(QPointF resetPoint);
     void reset();
 protected:

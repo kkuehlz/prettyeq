@@ -32,11 +32,10 @@ static inline unsigned int reverse_bits(unsigned int n, unsigned int num_bits) {
 }
 
 static inline unsigned int get_msb(unsigned int v) {
-	static const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
+    static const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
     static const unsigned int S[] = {1, 2, 4, 8, 16};
-	int i;
 
-	register unsigned int r = 0;
+    register unsigned int r = 0;
 
     if (v & b[4])
     {
@@ -83,9 +82,6 @@ void fft_run(
         unsigned int N,
         unsigned int channels) {
     assert(initialized);
-    /* Sigh... In no world should pulse really be handing us anything more than
-     * uint16_t in a rapid callback. Fuck it, we downcast. */
-    assert(N <= UINT_MAX);
 
     {
         unsigned int msb;
@@ -95,6 +91,7 @@ void fft_run(
             output_data[j] = input_data[i];
 
         N = N / channels;
+        assert(N <= MAX_SAMPLES);
         msb = get_msb(N);
 
         if (_unlikely_((N & (N-1)))) {
@@ -132,15 +129,5 @@ void fft_run(
             }
             wingspan *= 2;
         }
-    }
-
-    {
-        // deltaF = 1 / (N*deltaT)
-
-        /* Get power spectrum, ignoring samples above Nyquist frequency. */
-        //for (int k = 0; k < N / 2; k++) {
-        //    output_data[k] = cabsf(output_data[k]);
-        //    printf("k=%d, p=%f\n", k, crealf(output_data[k]));
-        //}
     }
 }

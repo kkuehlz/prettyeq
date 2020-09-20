@@ -28,6 +28,7 @@ SOURCES += \
     prettygraphicsscene.cpp \
     runguard.cpp \
     shelfcurve.cpp \
+    spectrumanalyzer.cpp \
     unixsignalhandler.cpp
 
 HEADERS += \
@@ -42,8 +43,10 @@ HEADERS += \
     peakingcurve.h \
     prettygraphicsscene.h \
     prettyshim.h \
+    ringbuffer.h \
     runguard.h \
     shelfcurve.h \
+    spectrumanalyzer.h \
     unixsignalhandler.h
 
 FORMS += \
@@ -51,7 +54,7 @@ FORMS += \
 
 QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-parameter
 INCLUDEPATH += '../equalizer'
-unix:LIBS += -L ../equalizer -lequalizer -lm -lpulse
+unix:LIBS += -L ../equalizer -lequalizer -lm -lpulse -lpthread -ffast-math -fopenmp
 TARGET = ../prettyeq
 
 # Default rules for deployment.

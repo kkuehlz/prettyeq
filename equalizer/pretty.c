@@ -1,6 +1,8 @@
 #include <assert.h>
+#include <complex.h>
 #include <errno.h>
 #include <math.h>
+#include <pthread.h>
 #include <pulse/pulseaudio.h>
 #include <pulse/sample.h>
 #include <stdatomic.h>
@@ -10,6 +12,7 @@
 #include <sys/mman.h>
 
 #include "arena.h"
+#include "fft.h"
 #include "pretty.h"
 
 #define NUM_FILTERS 7
@@ -35,6 +38,13 @@ static const pa_sample_spec sample_spec = {
 static _Atomic bool bypass;
 
 static arena_t *arena = NULL;
+
+struct _AudioFFT {
+    pthread_spinlock_t lock;
+    complex float data[MAX_SAMPLES];
+    unsigned int N;
+};
+static AudioFFT audio_fft = {0};
 
 typedef struct FilterParams {
     float a[3];
@@ -75,6 +85,10 @@ static void cleanup() {
 
     if (arena)
         arena_destroy(&arena);
+
+    if (audio_fft.lock) {
+        pthread_spin_destroy(&audio_fft.lock);
+    }
 
     munlockall();
 }
@@ -199,6 +213,8 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
 
     while (pa_stream_readable_size(s) > 0) {
         const void *input_data = NULL;
+        float *fp = NULL;
+        size_t num_samples;
 
         if (pa_stream_peek(s, &input_data, &length) < 0) {
             fprintf(stderr, "pa_stream_peek() failed: %s\n",
@@ -206,6 +222,9 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
             quit(1);
             return;
         }
+
+        fp = (float *) input_data;
+        num_samples = length / sizeof(float);
 
         if (bypass)
             goto play_frame;
@@ -215,7 +234,6 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
             /* Swap in NULL to block a filter param update mid-iteration. */
             FilterParams *params = atomic_exchange(&filters[k].params, NULL);
 
-            float *fp = (float*) input_data;
             float *xwin = filters[k].xwin;
             float *ywin = filters[k].ywin;
             float *a = params->a;
@@ -270,6 +288,15 @@ play_frame:
 
             length -= data_length;
             input_data += data_length;
+        }
+
+        if (pthread_spin_trylock(&audio_fft.lock) >= 0) {
+            /* Sigh... In no world should pulse really be handing us anything more than
+             * uint16_t in a rapid callback. Fuck it, we downcast. */
+            assert(num_samples <= UINT_MAX);
+            fft_run(fp, audio_fft.data, (unsigned int) num_samples, sample_spec.channels);
+            audio_fft.N = (unsigned int) num_samples;
+            pthread_spin_unlock(&audio_fft.lock);
         }
 
         if (pa_stream_drop(s) < 0) {
@@ -345,6 +372,16 @@ static void context_state_callback(pa_context *c, void *userdata) {
 int pretty_init() {
     int r;
 
+    /* Initialize the fft and user exposed data structures. */
+    fft_init();
+    audio_fft.N = 0;
+    r = pthread_spin_init(&audio_fft.lock, PTHREAD_PROCESS_PRIVATE);
+    if (r < 0) {
+        fprintf(stderr, "Could not pthread_spin_init()");
+        goto err;
+    }
+
+    /* Initialize the memory arena used to create new filters. */
     arena = arena_new(NUM_FILTERS * 2, sizeof(FilterParams));
     if (!arena) {
         fprintf(stderr, "Could not arena_new()");
@@ -518,4 +555,16 @@ void pretty_set_high_shelf(PrettyFilter *filter, float f0, float S, float db_gai
 void pretty_enable_bypass(bool should_bypass)
 {
     atomic_store(&bypass, should_bypass);
+}
+
+void pretty_acquire_audio_data(complex float **data, unsigned int *N) {
+    int r = pthread_spin_lock(&audio_fft.lock);
+    assert(r == 0); /* No deadlock. */
+    *data = audio_fft.data;
+    *N = audio_fft.N;
+}
+
+void pretty_release_audio_data() {
+    int r = pthread_spin_unlock(&audio_fft.lock);
+    assert(r == 0); /* No deadlock. */
 }

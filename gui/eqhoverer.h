@@ -14,6 +14,8 @@ public:
     explicit EqHoverer(FilterCurve *curve, CurvePoint *point, QObject *parent = nullptr);
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    enum { Type  = UserType + 1 };
+    int type() const override;
 
     void contextMenuToggle(bool on = false);
     void reset();

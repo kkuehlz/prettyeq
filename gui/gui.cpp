@@ -8,6 +8,7 @@
 #include "peakingcurve.h"
 #include "prettygraphicsscene.h"
 #include "prettyshim.h"
+#include "spectrumanalyzer.h"
 #include "ui_gui.h"
 
 #include <QBrush>
@@ -88,6 +89,8 @@ Gui::Gui(QWidget *parent)
     ui->graphicsView->setResizeAnchor(QGraphicsView::AnchorViewCenter);
     ui->graphicsView->setScene(scene);
 
+    addSpectrumAnalyzer();
+
     /* x-axis (boost/cut) */
     auto xaxis = new QGraphicsLineItem(XMIN, scene->sceneRect().center().y(), XMAX, scene->sceneRect().center().y());
     xaxis->setPen(QPen(Qt::white));
@@ -115,8 +118,8 @@ Gui::Gui(QWidget *parent)
     addPeakingEq(750,  PinkFilterPen, 	PinkFilterBrush, 	PinkInnerRadiusBrush, 	PinkOuterRadiusBrush);
     addPeakingEq(1500, BlueFilterPen, 	BlueFilterBrush, 	BlueInnerRadiusBrush, 	BlueOuterRadiusBrush);
     addPeakingEq(3500, PurpleFilterPen, PurpleFilterBrush, 	PurpleInnerRadiusBrush, PurpleOuterRadiusBrush);
-    connectBypassButton();
 
+    connectBypassButton();
     maybeShowInSystemTray();
 }
 
@@ -311,6 +314,19 @@ void Gui::connectBypassButton()
     });
 }
 
+void Gui::addSpectrumAnalyzer()
+{
+    spectrumAnalyzer = new SpectrumAnalyzer();
+    spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 2);
+    scene->addItem(spectrumAnalyzer);
+    spectrumUpdateTimer = new QTimer(this);
+    spectrumUpdateTimer->setInterval(100);
+    QObject::connect(spectrumUpdateTimer, &QTimer::timeout, [&]() {
+        spectrumAnalyzer->update();
+    });
+    spectrumUpdateTimer->start();
+}
+
 //=============================================================================
 
 void Gui::maybeShowInSystemTray()
@@ -382,6 +398,9 @@ Gui::~Gui()
         delete trayMenu;
         delete quitAct;
     }
+    spectrumUpdateTimer->stop();
+    delete spectrumUpdateTimer;
+    delete spectrumAnalyzer;
     delete ui;
 }
 

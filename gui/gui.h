@@ -18,11 +18,12 @@ namespace Ui { class Gui; }
 QT_END_NAMESPACE
 
 class CurvePoint;
-class FrequencyTick;
-class FilterCurve;
-class ShelfCurve;
-class PeakingCurve;
 class EqHoverer;
+class FilterCurve;
+class FrequencyTick;
+class PeakingCurve;
+class ShelfCurve;
+class SpectrumAnalyzer;
 
 typedef struct FilterItem {
     QGraphicsItemGroup *group;
@@ -67,6 +68,7 @@ private:
     void addHighShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush, QBrush outerRadiusBrush);
     void addPeakingEq(int frequency, QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush, QBrush outerRadiusBrush);
     void connectBypassButton();
+    void addSpectrumAnalyzer();
 
     void maybeShowInSystemTray();
 
@@ -75,6 +77,8 @@ private:
     QGraphicsScene *scene;
     FrequencyTick *tick[NUM_TICKS];
     FilterItem items[NUM_FILTERS];
+    SpectrumAnalyzer *spectrumAnalyzer;
+    QTimer *spectrumUpdateTimer;
     int itemCount = 0;
 
     /* System tray stuff. */
