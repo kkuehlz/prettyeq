@@ -20,6 +20,7 @@ SOURCES += \
     eqhoverer.cpp \
     filtercurve.cpp \
     frequencytick.cpp \
+    frequencytickbuilder.cpp \
     gui.cpp \
     highshelfcurve.cpp \
     lowshelfcurve.cpp \
@@ -36,6 +37,7 @@ HEADERS += \
     eqhoverer.h \
     filtercurve.h \
     frequencytick.h \
+    frequencytickbuilder.h \
     gui.h \
     highshelfcurve.h \
     lowshelfcurve.h \

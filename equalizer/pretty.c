@@ -295,7 +295,7 @@ play_frame:
              * uint16_t in a rapid callback. Fuck it, we downcast. */
             assert(num_samples <= UINT_MAX);
             fft_run(fp, audio_fft.data, (unsigned int) num_samples, sample_spec.channels);
-            audio_fft.N = (unsigned int) num_samples;
+            audio_fft.N = (unsigned int) num_samples / sample_spec.channels;
             pthread_spin_unlock(&audio_fft.lock);
         }
 

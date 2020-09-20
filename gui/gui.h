@@ -9,7 +9,6 @@
 #include <QMetaType>
 #include <QSystemTrayIcon>
 
-#define NUM_TICKS 10
 #define DB_GAIN_MAX 12
 #define NUM_FILTERS 7
 
@@ -21,6 +20,7 @@ class CurvePoint;
 class EqHoverer;
 class FilterCurve;
 class FrequencyTick;
+class FrequencyTickBuilder;
 class PeakingCurve;
 class ShelfCurve;
 class SpectrumAnalyzer;
@@ -75,10 +75,10 @@ private:
 private:
     Ui::Gui *ui;
     QGraphicsScene *scene;
-    FrequencyTick *tick[NUM_TICKS];
     FilterItem items[NUM_FILTERS];
-    SpectrumAnalyzer *spectrumAnalyzer;
-    QTimer *spectrumUpdateTimer;
+    SpectrumAnalyzer *spectrumAnalyzer = nullptr;
+    FrequencyTickBuilder *xTickBuilder = nullptr;
+    QTimer *spectrumUpdateTimer = nullptr;
     int itemCount = 0;
 
     /* System tray stuff. */

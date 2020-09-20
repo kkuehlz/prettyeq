@@ -9,6 +9,7 @@
 #include "prettygraphicsscene.h"
 #include "prettyshim.h"
 #include "spectrumanalyzer.h"
+#include "frequencytickbuilder.h"
 #include "ui_gui.h"
 
 #include <QBrush>
@@ -89,26 +90,15 @@ Gui::Gui(QWidget *parent)
     ui->graphicsView->setResizeAnchor(QGraphicsView::AnchorViewCenter);
     ui->graphicsView->setScene(scene);
 
-    addSpectrumAnalyzer();
-
     /* x-axis (boost/cut) */
     auto xaxis = new QGraphicsLineItem(XMIN, scene->sceneRect().center().y(), XMAX, scene->sceneRect().center().y());
     xaxis->setPen(QPen(Qt::white));
     xaxis->setOpacity(0.3);
     scene->addItem(xaxis);
 
-    /* y-axis frequency markers */
-    int tickWidth = WIDTH / (NUM_TICKS - 1);
-    tick[0] = new FrequencyTick(scene, XMIN,                 YMIN, YMAX, F1);
-    tick[1] = new FrequencyTick(scene, XMIN + tickWidth * 1, YMIN, YMAX, F2);
-    tick[2] = new FrequencyTick(scene, XMIN + tickWidth * 2, YMIN, YMAX, F3);
-    tick[3] = new FrequencyTick(scene, XMIN + tickWidth * 3, YMIN, YMAX, F4);
-    tick[4] = new FrequencyTick(scene, XMIN + tickWidth * 4, YMIN, YMAX, F5);
-    tick[5] = new FrequencyTick(scene, XMIN + tickWidth * 5, YMIN, YMAX, F6);
-    tick[6] = new FrequencyTick(scene, XMIN + tickWidth * 6, YMIN, YMAX, F7);
-    tick[7] = new FrequencyTick(scene, XMIN + tickWidth * 7, YMIN, YMAX, F8);
-    tick[8] = new FrequencyTick(scene, XMIN + tickWidth * 8, YMIN, YMAX, F9);
-    tick[9] = new FrequencyTick(scene, XMAX,                 YMIN, YMAX, F10);
+    /* x-axis frequency markers */
+    xTickBuilder = new FrequencyTickBuilder(scene, WIDTH, XMIN, XMAX, YMIN, YMAX);
+    addSpectrumAnalyzer();
 
     addLowShelf (GreenFilterPen,  GreenFilterBrush,  GreenInnerRadiusBrush,  GreenOuterRadiusBrush);
     addHighShelf(OrangeFilterPen, OrangeFilterBrush, OrangeInnerRadiusBrush, OrangeOuterRadiusBrush);
@@ -164,7 +154,7 @@ void Gui::addPeakingEq(int frequency, QPen curvePen, QBrush filterBrush, QBrush 
     group->addToGroup(curve);
     group->addToGroup(hover);
     group->setHandlesChildEvents(false);
-    group->setPos(unlerpTick(frequency) - group->boundingRect().width() / 2, 0);
+    group->setPos(xTickBuilder->unlerpTick(frequency) - group->boundingRect().width() / 2, 0);
     point->setResetPos(curve->controlPoint());
     scene->addItem(group);
     scene->addItem(point);
@@ -249,8 +239,8 @@ void Gui::peakingFilterParamsChanged(ShimFilterPtr filter, PeakingCurve *curve)
 {
     QPointF c = curve->controlPoint();
     QRectF r = curve->sceneBoundingRect();
-    qreal f0 = lerpTick(c.x());
-    qreal bw = lerpTick(r.bottomRight().x()) / lerpTick(r.bottomLeft().x()) / 2;
+    qreal f0 = xTickBuilder->lerpTick(c.x());
+    qreal bw = xTickBuilder->lerpTick(r.bottomRight().x()) / xTickBuilder->lerpTick(r.bottomLeft().x()) / 2;
     qreal db_gain = LINEAR_REMAP(
                 c.y(),
                 scene->sceneRect().y(), scene->sceneRect().y() + scene->sceneRect().height(),
@@ -261,7 +251,7 @@ void Gui::peakingFilterParamsChanged(ShimFilterPtr filter, PeakingCurve *curve)
 void Gui::lowshelfFilterParamsChanged(ShimFilterPtr filter, ShelfCurve *curve)
 {
     QPointF c = curve->controlPoint();
-    qreal f0 = lerpTick(c.x());
+    qreal f0 = xTickBuilder->lerpTick(c.x());
     qreal S =  curve->slope();
     qreal db_gain = LINEAR_REMAP(
                 c.y(),
@@ -274,37 +264,13 @@ void Gui::highshelfFilterParamsChanged(ShimFilterPtr filter, ShelfCurve *curve)
 {
 
     QPointF c = curve->controlPoint();
-    qreal f0 = lerpTick(c.x());
+    qreal f0 = xTickBuilder->lerpTick(c.x());
     qreal S =  curve->slope();
     qreal db_gain = LINEAR_REMAP(
                 c.y(),
                 scene->sceneRect().y(), scene->sceneRect().y() + scene->sceneRect().height(),
                 DB_GAIN_MAX, -DB_GAIN_MAX);
     PrettyShim::getInstance().set_high_shelf(filter, f0, S, db_gain);
-}
-
-qreal Gui::lerpTick(qreal x)
-{
-    FrequencyTick *tp, *tq;
-    for (int i = 1; i < NUM_TICKS; i++) {
-        tp = tick[i-1];
-        tq = tick[i];
-        if (x >= tp->getX() && x <= tq->getX())
-            break;
-    }
-    return LINEAR_REMAP(x, tp->getX(), tq->getX(), tp->getFrequency(), tq->getFrequency());
-}
-
-qreal Gui::unlerpTick(qreal f)
-{
-    FrequencyTick *tp, *tq;
-    for (int i = 1; i < NUM_TICKS; i++) {
-        tp = tick[i-1];
-        tq = tick[i];
-        if (f >= tp->getFrequency() && f <= tq->getFrequency())
-            break;
-    }
-    return LINEAR_REMAP(f, tp->getFrequency(), tq->getFrequency(), tp->getX(), tq->getX());
 }
 
 void Gui::connectBypassButton()
@@ -316,11 +282,12 @@ void Gui::connectBypassButton()
 
 void Gui::addSpectrumAnalyzer()
 {
-    spectrumAnalyzer = new SpectrumAnalyzer();
-    spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 2);
+    Q_ASSERT(xTickBuilder);
+    spectrumAnalyzer = new SpectrumAnalyzer(xTickBuilder);
+    spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 4);
     scene->addItem(spectrumAnalyzer);
     spectrumUpdateTimer = new QTimer(this);
-    spectrumUpdateTimer->setInterval(100);
+    spectrumUpdateTimer->setInterval(1000 / 30);
     QObject::connect(spectrumUpdateTimer, &QTimer::timeout, [&]() {
         spectrumAnalyzer->update();
     });
@@ -382,10 +349,6 @@ void Gui::trayActivated(QSystemTrayIcon::ActivationReason reason)
 
 Gui::~Gui()
 {
-
-    for (int i = 0; i < NUM_TICKS; i++)
-        delete tick[i];
-
     for (int i = 0; i < NUM_FILTERS; i++) {
         delete items[i].curve;
         delete items[i].hover;
