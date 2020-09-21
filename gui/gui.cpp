@@ -284,7 +284,7 @@ void Gui::addSpectrumAnalyzer()
 {
     Q_ASSERT(xTickBuilder);
     spectrumAnalyzer = new SpectrumAnalyzer(xTickBuilder);
-    spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 4);
+    spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 8);
     scene->addItem(spectrumAnalyzer);
     spectrumUpdateTimer = new QTimer(this);
     spectrumUpdateTimer->setInterval(1000 / 30);

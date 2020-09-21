@@ -7,9 +7,9 @@
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QPainterPath>
+#include <QtCore>
 #include <complex>
 #include <string.h>
-#include <QtCore>
 
 #define FFT_SAMPLE_TO_FREQ(NUM_SAMPLES, SAMPLE_INDEX) (44100*(SAMPLE_INDEX)/(NUM_SAMPLES))
 #define FFT_FREQ_TO_SAMPLE(NUM_SAMPLES, FREQ) ((int)roundf((FREQ)*(NUM_SAMPLES)/44100))
@@ -18,9 +18,8 @@
 SpectrumAnalyzer::SpectrumAnalyzer(FrequencyTickBuilder *xTickBuilder) : xTickBuilder(xTickBuilder)
 {
     setZValue(-1);
-    for (unsigned int i = 0; i < 4096; i++)
+    for (unsigned int i = 0; i < MAX_SAMPLES; i++)
         last_psds[i] = 0.0;
-    path.reserve(4096);
 }
 
 QRectF SpectrumAnalyzer::boundingRect() const
@@ -30,28 +29,35 @@ QRectF SpectrumAnalyzer::boundingRect() const
     return QRectF(0, 0, x, y / 4);
 }
 
-inline QPointF SpectrumAnalyzer::pointForSample(qreal frequency, qreal max_psd, qreal max_psd_moving_avg) {
+inline QLineF SpectrumAnalyzer::pointForSample(qreal frequency, qreal max_psd, qreal max_psd_moving_avg) {
     qreal sceneX = xTickBuilder->unlerpTick(frequency);
     qreal startX = mapFromScene(sceneX, 0xbeefcafe).x();
-    qreal startY = qMax(boundingRect().top(), LINEAR_REMAP(max_psd, 0, max_psd_moving_avg, boundingRect().bottom(), boundingRect().top()));
-    return QPointF(startX, qRound(startY));
+    qreal startY = qMax(boundingRect().top(), LINEAR_REMAP(max_psd, 0, max_psd_moving_avg, 0, boundingRect().height() / 2));
+    QLineF line(QPointF(startX, boundingRect().center().y()), QPointF(startX, boundingRect().center().y() - startY));
+    return line;
 }
 
 void SpectrumAnalyzer::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    path.clear();
     painter->setRenderHint(QPainter::Antialiasing, true);
-    painter->setRenderHint(QPainter::SmoothPixmapTransform, true);
 #if 0
     QPen rpen(Qt::red);
     rpen.setWidth(5);
+    QPen bpen(Qt::blue);
+    bpen.setWidth(5);
     painter->setPen(rpen);
     painter->drawPoint(boundingRect().center());
     painter->drawRect(boundingRect());
+    painter->drawPoint(boundingRect().topLeft());
+    auto line = QLineF(QPointF(100, 0), QPointF(100, boundingRect().height() / 2));
+    painter->drawLine(line);
+    line.translate(0, boundingRect().height() / 2);
+    painter->setPen(bpen);
+    painter->drawLine(line);
 #else
     qreal max_psd_moving_avg = 0.0;
-    auto pen = QPen(QColor(127, 153, 176));
-    pen.setWidth(3);
+    static auto brush = QBrush(QColor(127, 153, 176, 128));
+    static auto pen = QPen(brush, 3);
     painter->setPen(pen);
     {
         auto &buf = max_psds.buffer();
@@ -63,25 +69,26 @@ void SpectrumAnalyzer::paint(QPainter *painter, const QStyleOptionGraphicsItem *
     {
         unsigned int N;
         auto data = PrettyShim::getInstance().get_audio_data(&N);
-
-        int start_sample = FFT_FREQ_TO_SAMPLE(N, FMIN);
-        qreal max_psd = (std::conj(data[start_sample]) * data[start_sample]).real() / N;
-        QPointF start_point = pointForSample(FMIN, max_psd, max_psd_moving_avg);
-        path.moveTo(start_point);
-
-        for (unsigned int i = start_sample + 1; i < N / 2; i++) {
-            qreal psd = (qreal) std::abs(data[i]);
-            max_psd = qMax(max_psd, psd);
+        Q_ASSERT(N < MAX_SAMPLES);
+        qreal max_psd = 0.0;
+        for (unsigned int i = FFT_FREQ_TO_SAMPLE(N, FMIN); i < N / 2; i++) {
+            qreal raw_psd = (qreal) std::abs(data[i]);
+            qreal smoothed_psd = LERP(0.8, raw_psd, last_psds[i]);
+            last_psds[i] = smoothed_psd;
+            max_psd = qMax(max_psd, smoothed_psd);
             qreal frequency = FFT_SAMPLE_TO_FREQ(N, (qreal) i);
-            QPointF next_point = pointForSample(frequency, psd, max_psd_moving_avg);
-            path.lineTo(next_point);
-            path.moveTo(next_point);
+            qreal sceneX = xTickBuilder->unlerpTick(frequency);
+            qreal startX = mapFromScene(sceneX, 0xbeefcafe).x();
+            qreal startY = LINEAR_REMAP(smoothed_psd, 0, max_psd_moving_avg, 0, boundingRect().height() / 2);
+            startY = qMin(startY, boundingRect().height() / 2);
+            QPointF p1 = QPointF(startX, boundingRect().center().y() - startY);
+            QPointF p2 = QPointF(startX, boundingRect().center().y() + startY);
+            lines[i].setP1(p1);
+            lines[i].setP2(p2);
         }
 
-        if (max_psd_moving_avg > 0.01) {
-            path.closeSubpath();
-            painter->drawPath(path);
-        }
+        if (max_psd_moving_avg > 0.01)
+            painter->drawLines(lines, N / 2);
 
         PrettyShim::getInstance().release_audio_data();
         max_psds.append(max_psd);

@@ -29,26 +29,12 @@
    <bool>false</bool>
   </property>
   <property name="styleSheet">
-   <string notr="true">QPushButton {
-    border: .5px solid rgba(115, 114, 111, 255);
-    border-radius: 2px;
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                      stop: 0 #f6f7fa, stop: 1 #dadbde);
-    min-width: 80px;
-    min-height: 25px;	
+   <string notr="true">QWidget {
+  background: #25282b;
 }
 
-QPushButton:hover {
-  border-color: rgba(115, 114, 111, 127);
-}
-
-QPushButton:pressed {
-    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                                      stop: 0 #dadbde, stop: 1 #f6f7fa);
-}
-
-QPushButton:checked {
-  background-color: #F1DD25;
+QPushButton {
+  color: white
 }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -70,8 +56,8 @@ QPushButton:checked {
     <widget class="QPushButton" name="pushButton">
      <property name="minimumSize">
       <size>
-       <width>82</width>
-       <height>27</height>
+       <width>115</width>
+       <height>0</height>
       </size>
      </property>
      <property name="maximumSize">
@@ -80,11 +66,21 @@ QPushButton:checked {
        <height>16777215</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <family>Source Code Pro Semibold</family>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="layoutDirection">
+      <enum>Qt::LeftToRight</enum>
+     </property>
      <property name="autoFillBackground">
       <bool>false</bool>
      </property>
      <property name="text">
-      <string>Bypass</string>
+      <string>BYPASS</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
