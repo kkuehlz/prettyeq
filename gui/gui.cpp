@@ -287,8 +287,10 @@ void Gui::addSpectrumAnalyzer()
     spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 8);
     scene->addItem(spectrumAnalyzer);
     spectrumUpdateTimer = new QTimer(this);
+    spectrumUpdateTimer->setTimerType(Qt::PreciseTimer);
     spectrumUpdateTimer->setInterval(1000 / 30);
     QObject::connect(spectrumUpdateTimer, &QTimer::timeout, [&]() {
+        spectrumAnalyzer->updateFrameDelta();
         spectrumAnalyzer->update();
     });
     spectrumUpdateTimer->start();
