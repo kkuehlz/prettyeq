@@ -82,6 +82,10 @@ static const float single_channel_5000HZ_data[] = {
     -0.297546,
 };
 
+static const float dual_channel_micro[] = {
+    -0.120544, -0.120544, 0.222534, 0.222534,
+};
+
 typedef struct TestCases {
     int frequency;
     float expected_psd;
@@ -146,8 +150,23 @@ void test_single_channel() {
     fprintf(stdout, "[FFT Run %d samples] time: %lf\n", N, (double) (end - start) / CLOCKS_PER_SEC);
 }
 
+void test_dual_channel_micro() {
+    clock_t start, end;
+    double cpu_time;
+    complex float output[MAX_SAMPLES];
+    unsigned int N = sizeof(dual_channel_micro) / sizeof(dual_channel_micro[0]);
+
+    start = clock();
+    fft_run(dual_channel_micro, output, N, 2);
+    end = clock();
+
+
+    fprintf(stdout, "[FFT Run %d samples] time: %lf\n", N, (double) (end - start) / CLOCKS_PER_SEC);
+}
+
 int main(int argc, char **argv) {
     test_init();
     test_single_channel();
+    test_dual_channel_micro();
     return 0;
 }

@@ -15,7 +15,7 @@ static bool initialized = false;
 static complex float omega_vec[K][MAX_SAMPLES];
 
 static inline unsigned int reverse_bits(unsigned int n, unsigned int num_bits) {
-    unsigned int i, j;
+    int i, j;
     register unsigned int res = 0;
 
     i = 0;

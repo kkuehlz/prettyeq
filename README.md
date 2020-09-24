@@ -3,7 +3,7 @@
 prettyeq is a system-wide paramateric equalizer for pulseaudio. This software
 is in alpha. Use at your own discretion.
 
-![prettyeq demo](https://i.fluffy.cc/gH3TjhjzV1rCH0Pdhwjxh6MxRqB39j05.gif)
+![prettyeq demo](https://i.fluffy.cc/0GFcjGmbrtCgnbRSjd4xjDcf7h6qNk4Q.gif)
 
 ### Usage
 
