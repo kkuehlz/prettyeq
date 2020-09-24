@@ -205,6 +205,10 @@ static void load_module_callback(pa_context *c, uint32_t idx, void *userdata) {
     prettyeq_module_index = idx;
     pa_operation_unref(pa_context_get_sink_input_info_list(c, sink_input_callback, NULL));
     pa_operation_unref(pa_context_get_sink_info_by_name(c, SINK_NAME, null_sink_info_callback, NULL));
+
+    /* Subscribe to new sink-inputs so we can send them through the equalizer. */
+    pa_context_set_subscribe_callback(c, subscribe_callback, NULL);
+    pa_operation_unref(pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL));
 }
 
 static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
@@ -347,10 +351,6 @@ static void context_state_callback(pa_context *c, void *userdata) {
                                                       "sink_name=" SINK_NAME,
                                                       load_module_callback,
                                                       NULL));
-
-            /* Subscribe to new sink-inputs so we can send them through the equalizer. */
-            pa_context_set_subscribe_callback(c, subscribe_callback, NULL);
-            pa_operation_unref(pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL));
 
             fprintf(stderr, "context is ready!\n");
             break;
