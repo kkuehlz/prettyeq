@@ -1,6 +1,8 @@
+#include "collisionmanager.h"
 #include "curvepoint.h"
 #include "eqhoverer.h"
 #include "frequencytick.h"
+#include "frequencytickbuilder.h"
 #include "gui.h"
 #include "highshelfcurve.h"
 #include "lowshelfcurve.h"
@@ -9,7 +11,6 @@
 #include "prettygraphicsscene.h"
 #include "prettyshim.h"
 #include "spectrumanalyzer.h"
-#include "frequencytickbuilder.h"
 #include "ui_gui.h"
 
 #include <QBrush>
@@ -84,6 +85,7 @@ Gui::Gui(QWidget *parent)
     scene->setBackgroundBrush(QBrush(backgroundGradient));
 
     ui->graphicsView->setRenderHint(QPainter::Antialiasing);
+    ui->graphicsView->setRenderHint(QPainter::TextAntialiasing);
     ui->graphicsView->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
     ui->graphicsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     ui->graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -99,6 +101,8 @@ Gui::Gui(QWidget *parent)
     /* x-axis frequency markers */
     xTickBuilder = new FrequencyTickBuilder(scene, WIDTH, XMIN, XMAX, YMIN, YMAX);
     addSpectrumAnalyzer();
+
+    collisionMgr = new CollisionManager();
 
     addLowShelf (GreenFilterPen,  GreenFilterBrush,  GreenInnerRadiusBrush,  GreenOuterRadiusBrush);
     addHighShelf(OrangeFilterPen, OrangeFilterBrush, OrangeInnerRadiusBrush, OrangeOuterRadiusBrush);
@@ -126,9 +130,11 @@ void Gui::addFilterItem(QGraphicsItemGroup *group, FilterCurve *curve, CurvePoin
 }
 
 void Gui::addPeakingEq(int frequency, QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush, QBrush outerRadiusBrush) {
+    Q_ASSERT(collisionMgr);
     PeakingCurve *curve = new PeakingCurve(curvePen, filterBrush);
     CurvePoint *point = new CurvePoint(innerRadiusBrush, outerRadiusBrush);
-    EqHoverer *hover = new EqHoverer(curve, point);
+    EqHoverer *hover = new EqHoverer(collisionMgr, curve, point);
+    collisionMgr->addEqHoverer(hover);
 
     /* point signals */
     QObject::connect(point,
@@ -163,9 +169,11 @@ void Gui::addPeakingEq(int frequency, QPen curvePen, QBrush filterBrush, QBrush 
 
 void Gui::addLowShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush, QBrush outerRadiusBrush)
 {
+    Q_ASSERT(collisionMgr);
     ShelfCurve *curve = new LowShelfCurve(curvePen, filterBrush);
     CurvePoint *point = new CurvePoint(innerRadiusBrush, outerRadiusBrush);
-    EqHoverer *hover = new EqHoverer(curve, point);
+    EqHoverer *hover = new EqHoverer(collisionMgr, curve, point);
+    collisionMgr->addEqHoverer(hover);
 
     /* point signals */
     QObject::connect(point,
@@ -200,9 +208,11 @@ void Gui::addLowShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush
 
 void Gui::addHighShelf(QPen curvePen, QBrush filterBrush, QBrush innerRadiusBrush, QBrush outerRadiusBrush)
 {
+    Q_ASSERT(collisionMgr);
     ShelfCurve *curve = new HighShelfCurve(curvePen, filterBrush);
     CurvePoint *point = new CurvePoint(innerRadiusBrush, outerRadiusBrush);
-    EqHoverer *hover = new EqHoverer(curve, point);
+    EqHoverer *hover = new EqHoverer(collisionMgr, curve, point);
+    collisionMgr->addEqHoverer(hover);
 
     /* point signals */
     QObject::connect(point,
@@ -287,8 +297,7 @@ void Gui::addSpectrumAnalyzer()
     spectrumAnalyzer->setPos(-scene->sceneRect().width() / 2, -scene->sceneRect().height() / 8);
     scene->addItem(spectrumAnalyzer);
     spectrumUpdateTimer = new QTimer(this);
-    spectrumUpdateTimer->setTimerType(Qt::PreciseTimer);
-    spectrumUpdateTimer->setInterval(1000 / 30);
+    spectrumUpdateTimer->setInterval(1000 / 60);
     QObject::connect(spectrumUpdateTimer, &QTimer::timeout, [&]() {
         spectrumAnalyzer->updateFrameDelta();
         spectrumAnalyzer->update();
@@ -351,6 +360,7 @@ void Gui::trayActivated(QSystemTrayIcon::ActivationReason reason)
 
 Gui::~Gui()
 {
+    delete collisionMgr;
     for (int i = 0; i < NUM_FILTERS; i++) {
         delete items[i].curve;
         delete items[i].hover;

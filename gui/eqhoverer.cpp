@@ -1,3 +1,4 @@
+#include "collisionmanager.h"
 #include "eqhoverer.h"
 #include <QGraphicsScene>
 #include <QDebug>
@@ -9,12 +10,14 @@ static const unsigned int Collision   = 1 << 1;
 static const unsigned int Hover       = 1 << 2;
 static const unsigned int ContextMenu = 1 << 3;
 
-EqHoverer::EqHoverer(FilterCurve *curve, CurvePoint *point, QObject *parent) : QObject(parent), curve(curve), point(point), pointState(0)
+EqHoverer::EqHoverer(CollisionManager *mgr, FilterCurve *curve, CurvePoint *point, QObject *parent)
+    : QObject(parent), curve(curve), point(point), pointState(0), mgr(mgr)
 {
     Q_ASSERT(curve);
     Q_ASSERT(point);
     setAcceptHoverEvents(true);
-    pointState |= Default;
+    setFlag(QGraphicsItem::ItemHasNoContents, true);
+    reset();
 }
 
 
@@ -41,21 +44,6 @@ void EqHoverer::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->restore();
 #endif
 
-    bool nocollide = true;
-    for(QGraphicsItem *i : collidingItems()) {
-        EqHoverer *cc = qgraphicsitem_cast<EqHoverer*>(i);
-        if (cc && cc != this) {
-            if (this->isUnderMouse() || cc->isUnderMouse()) {
-                pointState |= Collision;
-                maybeShowPoint();
-                nocollide = false;
-            }
-        }
-    }
-    if (nocollide) {
-        pointState &= ~Collision;
-        maybeShowPoint();
-    }
 }
 
 int EqHoverer::type() const
@@ -64,13 +52,28 @@ int EqHoverer::type() const
     return Type;
 }
 
+void EqHoverer::collisionStateChanged()
+{
+    pointState &= ~Collision;
+    for(QGraphicsItem *i : collidingItems()) {
+        EqHoverer *cc = qgraphicsitem_cast<EqHoverer*>(i);
+        if (cc && cc != this) {
+            if (isUnderMouse() || cc->isUnderMouse()) {
+                pointState |= Collision;
+                break;
+            }
+        }
+    }
+    maybeShowPoint();
+}
+
 void EqHoverer::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
 #if 0
     qDebug() << "hoverEnterEvent();";
 #endif
     pointState |= Hover;
-    maybeShowPoint();
+    mgr->notifyFriends();
 }
 
 void EqHoverer::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
@@ -79,7 +82,7 @@ void EqHoverer::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
     qDebug() << "hoverLeaveEvent();";
 #endif
     pointState &= ~Hover;
-    maybeShowPoint();
+    mgr->notifyFriends();
 }
 
 void EqHoverer::contextMenuToggle(bool on) {
@@ -87,6 +90,7 @@ void EqHoverer::contextMenuToggle(bool on) {
     pointState |= contextBit;
     pointState &= (~ContextMenu | contextBit);
     maybeShowPoint();
+    mgr->notifyFriends();
 }
 
 void EqHoverer::reset()
@@ -114,4 +118,5 @@ void EqHoverer::resync(FilterCurve *curve)
 {
     pointState &= ~Default;
     prepareGeometryChange();
+    mgr->notifyFriends();
 }

@@ -16,6 +16,7 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class Gui; }
 QT_END_NAMESPACE
 
+class CollisionManager;
 class CurvePoint;
 class EqHoverer;
 class FilterCurve;
@@ -75,6 +76,7 @@ private:
 private:
     Ui::Gui *ui;
     QGraphicsScene *scene;
+    CollisionManager *collisionMgr = nullptr;;
     FilterItem items[NUM_FILTERS];
     SpectrumAnalyzer *spectrumAnalyzer = nullptr;
     FrequencyTickBuilder *xTickBuilder = nullptr;

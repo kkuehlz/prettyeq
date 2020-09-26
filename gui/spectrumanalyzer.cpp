@@ -86,7 +86,7 @@ void SpectrumAnalyzer::paint(QPainter *painter, const QStyleOptionGraphicsItem *
             qreal min = qMin(raw_psd, last_psds[i]);
             qreal max = qMax(raw_psd, last_psds[i]);
             qreal dampening_factor = 1 - min/max;
-            dampening_factor = qMax(0.05, dampening_factor);
+            dampening_factor = qMax(0.5, dampening_factor);
             dampening_factor = qMin(0.95, dampening_factor);
             qreal smoothed_psd = dampen(raw_psd, last_psds[i], dampening_factor, delta);
             last_psds[i] = smoothed_psd;

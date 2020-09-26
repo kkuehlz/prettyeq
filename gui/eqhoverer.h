@@ -6,17 +6,20 @@
 #include <QGraphicsItem>
 #include <QObject>
 
+class CollisionManager;
+
 class EqHoverer : public QObject, public QGraphicsItem
 {
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
 public:
-    explicit EqHoverer(FilterCurve *curve, CurvePoint *point, QObject *parent = nullptr);
+    explicit EqHoverer(CollisionManager *mgr, FilterCurve *curve, CurvePoint *point, QObject *parent = nullptr);
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     enum { Type  = UserType + 1 };
     int type() const override;
 
+    void collisionStateChanged();
     void contextMenuToggle(bool on = false);
     void reset();
 protected:
@@ -36,6 +39,7 @@ public:
 
 private:
     unsigned int pointState;
+    CollisionManager *mgr;
 };
 
 #endif // EQHOVERER_H
