@@ -38,6 +38,9 @@ PRETTY_EXPORT
 int pretty_exit();
 
 PRETTY_EXPORT
+void pretty_setup_sink_io();
+
+PRETTY_EXPORT
 int pretty_new_filter(PrettyFilter **filter);
 
 PRETTY_EXPORT

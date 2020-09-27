@@ -22,7 +22,7 @@
 
 static pa_mainloop_api *mainloop_api = NULL;
 static pa_context *context = NULL;
-static uint32_t prettyeq_module_index;
+static uint32_t prettyeq_module_index = PA_INVALID_INDEX;
 static pa_stream *read_stream = NULL, *write_stream = NULL;
 static pa_threaded_mainloop *m = NULL;
 
@@ -67,6 +67,8 @@ static int user_enabled_filters = 0;
 
 static void quit(int ret) {
     fprintf(stderr, "debug: quit(%d) called!", ret);
+    if (prettyeq_module_index != PA_INVALID_INDEX)
+        pa_operation_unref(pa_context_unload_module(context, prettyeq_module_index, NULL, NULL));
     mainloop_api->quit(mainloop_api, ret);
 }
 
@@ -193,24 +195,6 @@ static void unload_module_callback(pa_context *c, int success, void *userdata) {
     pa_threaded_mainloop_signal(m, 0);
 }
 
-static void load_module_callback(pa_context *c, uint32_t idx, void *userdata) {
-    assert(c);
-
-    if (idx == PA_INVALID_INDEX) {
-        fprintf(stderr, "Bad index\n");
-        quit(1);
-        return;
-    }
-
-    prettyeq_module_index = idx;
-    pa_operation_unref(pa_context_get_sink_input_info_list(c, sink_input_callback, NULL));
-    pa_operation_unref(pa_context_get_sink_info_by_name(c, SINK_NAME, null_sink_info_callback, NULL));
-
-    /* Subscribe to new sink-inputs so we can send them through the equalizer. */
-    pa_context_set_subscribe_callback(c, subscribe_callback, NULL);
-    pa_operation_unref(pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL));
-}
-
 static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
     assert(s);
     assert(length > 0);
@@ -312,6 +296,54 @@ play_frame:
     }
 }
 
+static void load_module_callback(pa_context *c, uint32_t idx, void *userdata) {
+    assert(c);
+
+    if (idx == PA_INVALID_INDEX) {
+        fprintf(stderr, "Bad index\n");
+        quit(1);
+        return;
+    }
+
+    prettyeq_module_index = idx;
+    pa_operation_unref(pa_context_get_sink_input_info_list(c, sink_input_callback, NULL));
+    pa_operation_unref(pa_context_get_sink_info_by_name(c, SINK_NAME, null_sink_info_callback, NULL));
+
+    /* Subscribe to new sink-inputs so we can send them through the equalizer. */
+    pa_context_set_subscribe_callback(c, subscribe_callback, NULL);
+    pa_operation_unref(pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK_INPUT, NULL, NULL));
+}
+
+static void module_list_callback(pa_context *c, const pa_module_info *i, int is_last, void *userdata) {
+    pa_threaded_mainloop *m = userdata;
+    static bool signal_on_last = true;
+
+    assert(m);
+    assert(c);
+
+    if (is_last) {
+        if (signal_on_last)
+            pa_threaded_mainloop_signal(m, 0);
+        return;
+    }
+
+    assert(i);
+    if (strcmp(i->name, "module-null-sink") == 0 && i->argument && strcmp(i->argument, "sink_name=" SINK_NAME) == 0) {
+        pa_operation_unref(pa_context_unload_module(c, i->index, unload_module_callback, m));
+        signal_on_last = false;
+    }
+
+}
+
+static void drain_signal_callback(pa_context *c, void *userdata) {
+    pa_threaded_mainloop *m = userdata;
+
+    assert(c);
+    assert(m);
+
+    pa_threaded_mainloop_signal(m, 0);
+}
+
 static void context_state_callback(pa_context *c, void *userdata) {
     switch (pa_context_get_state(c)) {
         case PA_CONTEXT_UNCONNECTED:
@@ -344,13 +376,7 @@ static void context_state_callback(pa_context *c, void *userdata) {
 
             /* Audio event callback functions. */
             pa_stream_set_read_callback(read_stream, read_stream_callback, NULL);
-
-            /* Load in the null sink to act as audio IO. */
-            pa_operation_unref(pa_context_load_module(c,
-                                                      "module-null-sink",
-                                                      "sink_name=" SINK_NAME,
-                                                      load_module_callback,
-                                                      NULL));
+            pa_threaded_mainloop_signal(m, 0);
 
             fprintf(stderr, "context is ready!\n");
             break;
@@ -449,16 +475,50 @@ err:
     return r;
 }
 
-int pretty_exit() {
-    if (m) {
-        pa_operation *o;
+void pretty_setup_sink_io() {
+    pa_operation *o;
 
-        pa_threaded_mainloop_lock(m);
-        o = pa_context_unload_module(context, prettyeq_module_index, unload_module_callback, m);
+    pa_threaded_mainloop_lock(m);
+
+    /* Wait until context is ready. */
+    while(pa_context_get_state(context) != PA_CONTEXT_READY)
+        pa_threaded_mainloop_wait(m);
+
+    /* Handle an unclean termination and cleanup an existing prettyeq module. */
+    o = pa_context_get_module_info_list(context, module_list_callback, m);
+    while (pa_operation_get_state(o) == PA_OPERATION_RUNNING)
+        pa_threaded_mainloop_wait(m);
+    pa_operation_cancel(o);
+    pa_operation_unref(o);
+
+    /* Drain the context. TODO(keur): Not sure if we actually need this. Poorly documented function */
+    if ((o = pa_context_drain(context, drain_signal_callback, m))) {
         while (pa_operation_get_state(o) == PA_OPERATION_RUNNING)
             pa_threaded_mainloop_wait(m);
         pa_operation_unref(o);
-        pa_threaded_mainloop_unlock(m);
+    }
+
+    pa_threaded_mainloop_unlock(m);
+
+    /* Load in the null sink to act as audio IO. */
+    pa_operation_unref(pa_context_load_module(context,
+                                              "module-null-sink",
+                                              "sink_name=" SINK_NAME,
+                                              load_module_callback,
+                                              NULL));
+}
+
+int pretty_exit() {
+    if (m) {
+        pa_operation *o;
+        if (prettyeq_module_index != PA_INVALID_INDEX) {
+            pa_threaded_mainloop_lock(m);
+            o = pa_context_unload_module(context, prettyeq_module_index, unload_module_callback, m);
+            while (pa_operation_get_state(o) == PA_OPERATION_RUNNING)
+                pa_threaded_mainloop_wait(m);
+            pa_operation_unref(o);
+            pa_threaded_mainloop_unlock(m);
+        }
         pa_threaded_mainloop_stop(m);
     }
     cleanup();

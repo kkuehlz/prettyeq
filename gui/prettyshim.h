@@ -36,6 +36,10 @@ public:
         Q_ASSERT(r == 0);
     }
 
+    void setup_sink_io()  {
+        pretty_setup_sink_io();
+    }
+
     void exit() {
         pretty_exit();
     }

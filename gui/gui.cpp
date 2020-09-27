@@ -74,6 +74,7 @@ Gui::Gui(QWidget *parent)
 {
 
     PrettyShim::getInstance().init();
+    PrettyShim::getInstance().setup_sink_io();
     ui->setupUi(this);
 
     QRadialGradient backgroundGradient(QPoint(0, 0), WIDTH);
