@@ -242,7 +242,7 @@ static void read_stream_callback(pa_stream *s, size_t length, void *userdata) {
                     (a[1] / a[0] * ywin[0]) -
                     (a[2] / a[0] * ywin[1]);
 
-                if (IS_DENORMAL(f))
+                if (PRETTY_IS_DENORMAL(f) || PRETTY_IS_NAN(f))
                     f = 0.0f;
 
                 fp[i] = f;
@@ -269,7 +269,12 @@ play_frame:
             }
 
             memcpy(output_data, input_data, data_length);
-            pa_stream_write(write_stream, output_data, data_length, NULL, 0, PA_SEEK_RELATIVE);
+            if (pa_stream_write(write_stream, output_data, data_length, NULL, 0, PA_SEEK_RELATIVE) < 0) {
+                fprintf(stderr, "pa_stream_write() failed: %s\n",
+                                pa_strerror(pa_context_errno(context)));
+                quit(1);
+                return;
+            }
 
             if (data_length >= length)
                 break;

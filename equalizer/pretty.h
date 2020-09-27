@@ -10,10 +10,17 @@
 
 #define DRAIN_NO_CB(c) (pa_operation_unref(pa_context_drain(c, NULL, NULL)))
 
-#define IS_DENORMAL(f)          \
+/* with -ffast-math the standard macros have undefined behavior. */
+#define PRETTY_IS_DENORMAL(f)   \
     ({                          \
         typeof(f) *_f_ = &(f);  \
-        ((*(unsigned int *)_f_) & 0x7f800000) == 0 || ((*(unsigned int *)_f_) & 0xff800000) == 0; \
+        ((*(unsigned int *)_f_) & 0x7f800000u) == 0 || ((*(unsigned int *)_f_) & 0xff800000u) == 0; \
+    })
+
+#define PRETTY_IS_NAN(f)  		\
+    ({                          \
+        typeof(f) *_f_ = &(f);  \
+        ((*(unsigned int *)_f_) << 1) > 0xff000000u; \
     })
 
 /* accomodating the stupid C++ template redefinition... */
