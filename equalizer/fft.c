@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdalign.h>
 #include <string.h>
 #include <time.h>
 
@@ -12,7 +13,7 @@
 #include "fft.h"
 
 static bool initialized = false;
-static complex float omega_vec[K][MAX_SAMPLES];
+alignas(32) static complex float omega_vec_log2[MAX_SAMPLES][K];
 
 static inline unsigned int reverse_bits(unsigned int n, unsigned int num_bits) {
     int i, j;
@@ -32,45 +33,18 @@ static inline unsigned int reverse_bits(unsigned int n, unsigned int num_bits) {
 }
 
 static inline unsigned int get_msb(unsigned int v) {
-    static const unsigned int b[] = {0x2, 0xC, 0xF0, 0xFF00, 0xFFFF0000};
-    static const unsigned int S[] = {1, 2, 4, 8, 16};
-
-    register unsigned int r = 0;
-
-    if (v & b[4])
-    {
-        v >>= S[4];
-        r |= S[4];
-    }
-    if (v & b[3])
-    {
-        v >>= S[3];
-        r |= S[3];
-    }
-    if (v & b[2])
-    {
-        v >>= S[2];
-        r |= S[2];
-    }
-    if (v & b[1])
-    {
-        v >>= S[1];
-        r |= S[1];
-    }
-    if (v & b[0])
-    {
-        v >>= S[0];
-        r |= S[0];
-    }
-    return r;
+    return 31 - __builtin_clz(v);
 }
 
 void fft_init() {
-#pragma omp parallel for
-    for (unsigned int n = 0; n < MAX_SAMPLES; n++) {
+    for (unsigned int nl = 0; nl < MAX_SAMPLES_LOG_2; nl++) {
+        unsigned int n = (1u << nl);
+        const double mul_div_n = (-2.0 * M_PI) / n;
         for (unsigned int k = 0; k < K; k++) {
-            complex float exp = -(2 * M_PI * I * k) / n;
-            omega_vec[k][n] = cpowf(M_E, exp);
+            complex float *res = &omega_vec_log2[nl][k];
+            complex double theta = mul_div_n * k;
+            _real_(*res) = cosf(theta);
+            _imag_(*res) = sinf(theta);
         }
     }
     initialized = true;
@@ -116,17 +90,18 @@ void fft_run(
     {
         /* Simple radix-2 DIT FFT */
         unsigned int wingspan = 1;
+        unsigned int nl = 1;
         while (wingspan < N) {
-            unsigned int n = wingspan * 2;
             for (unsigned int j = 0; j < N; j+=wingspan*2) {
                 for (unsigned int k = 0; k < wingspan; k++) {
-                    complex float omega = omega_vec[k][n];
+                    complex float omega = omega_vec_log2[nl][k];
                     complex float a0 = output_data[k+j];
                     complex float a1 = output_data[k+j+wingspan];
                     output_data[k+j] = a0 + omega*a1;
                     output_data[k+j+wingspan] = a0 - omega*a1;
                 }
             }
+            nl++;
             wingspan *= 2;
         }
     }
