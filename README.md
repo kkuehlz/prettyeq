@@ -5,6 +5,15 @@ is in alpha. Use at your own discretion.
 
 ![prettyeq demo](https://i.fluffy.cc/0GFcjGmbrtCgnbRSjd4xjDcf7h6qNk4Q.gif)
 
+### Building
+
+```
+mkdir build
+cd build
+qmake CONFIG+=release ..
+make -j4
+```
+
 ### Usage
 
 When the program is executed all pulseaudio streams will be routed through the
