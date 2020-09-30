@@ -13,5 +13,7 @@
 #define _likely_(x)      __builtin_expect(!!(x), 1)
 #define _unlikely_(x)    __builtin_expect(!!(x), 0)
 
+#define _forceinline_ __attribute__((always_inline)) inline
+
 #define _real_ __real__
 #define _imag_ __imag__

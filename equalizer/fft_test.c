@@ -144,6 +144,7 @@ void test_single_channel() {
     for (int i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
         int sample_index = FFT_FREQ_TO_SAMPLE(N, cases[i].frequency);
         float psd = FFT_PSD(output[sample_index]);
+        fprintf(stderr, "Expected=%f, Actual=%f\n", cases[i].expected_psd, FFT_PSD(output[sample_index]));
         assert(float_approx_equal(cases[i].expected_psd, FFT_PSD(output[sample_index])));
     }
 

@@ -1,5 +1,5 @@
 TEMPLATE = lib
-QMAKE_CFLAGS += -ffast-math -fopenmp
+QMAKE_CFLAGS += -ffast-math -fopenmp -march=native
 QMAKE_CFLAGS_WARN_ON += -Wno-unused-parameter
 CONFIG += staticlib
 HEADERS = \
