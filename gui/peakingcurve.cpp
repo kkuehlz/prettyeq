@@ -1,4 +1,5 @@
 #include "peakingcurve.h"
+#include <QtGlobal>
 #include <QDebug>
 #include <QGraphicsScene>
 #include <QPainter>
@@ -12,23 +13,28 @@ PeakingCurve::PeakingCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent
 {
     setZValue(100000);
 
-    lineSpline.reserve(SPLINE_CAPACITY);
-    fillSpline.reserve(SPLINE_CAPACITY);
+    lineSpline = std::unique_ptr<QPainterPath>(new QPainterPath());
+    fillSpline = std::unique_ptr<QPainterPath>(new QPainterPath());
+
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    lineSpline->reserve(SPLINE_CAPACITY);
+    fillSpline->reserve(SPLINE_CAPACITY);
+#endif
     reset();
     updateSplineGeometry();
 }
 
 QRectF PeakingCurve::boundingRect() const
 {
-    return fillSpline.boundingRect();
+    return fillSpline->boundingRect();
 }
 
 void PeakingCurve::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(getActivePen());
-    painter->drawPath(lineSpline);
-    painter->fillPath(fillSpline, getActiveBrush());
+    painter->drawPath(*lineSpline);
+    painter->fillPath(*fillSpline, getActiveBrush());
 
 #if 0
     // debugging - draw control points
@@ -71,22 +77,34 @@ void PeakingCurve::reset()
 
 void PeakingCurve::updateSplineGeometry()
 {
-    lineSpline.clear();
-    lineSpline.moveTo(p0);
-    lineSpline.quadTo(c1, ip);
-    lineSpline.moveTo(ip);
-    lineSpline.quadTo(c2, p1);
-    Q_ASSERT(lineSpline.elementCount() == 8);
-    Q_ASSERT(lineSpline.capacity() == SPLINE_CAPACITY);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    lineSpline->clear();
+#else
+    lineSpline.reset(new QPainterPath());
+#endif
+    lineSpline->moveTo(p0);
+    lineSpline->quadTo(c1, ip);
+    lineSpline->moveTo(ip);
+    lineSpline->quadTo(c2, p1);
+    Q_ASSERT(lineSpline->elementCount() == 8);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    Q_ASSERT(lineSpline->capacity() == SPLINE_CAPACITY);
+#endif
 
-    fillSpline.clear();
-    fillSpline.moveTo(p0);
-    fillSpline.quadTo(c1, ip);
-    fillSpline.moveTo(ip);
-    fillSpline.quadTo(c2, p1);
-    fillSpline.lineTo(p0);
-    Q_ASSERT(fillSpline.elementCount() == 9);
-    Q_ASSERT(fillSpline.capacity() == SPLINE_CAPACITY);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    fillSpline->clear();
+#else
+    fillSpline.reset(new QPainterPath());
+#endif
+    fillSpline->moveTo(p0);
+    fillSpline->quadTo(c1, ip);
+    fillSpline->moveTo(ip);
+    fillSpline->quadTo(c2, p1);
+    fillSpline->lineTo(p0);
+    Q_ASSERT(fillSpline->elementCount() == 9);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    Q_ASSERT(fillSpline->capacity() == SPLINE_CAPACITY);
+#endif
 }
 
 void PeakingCurve::pointPositionChanged(CurvePoint *point)

@@ -1,12 +1,15 @@
 #ifndef PEAKINGCURVE_H
 #define PEAKINGCURVE_H
 
+#include "curvepoint.h"
+#include "filtercurve.h"
+
 #include <QBrush>
 #include <QGraphicsItem>
 #include <QObject>
 #include <QPen>
-#include "curvepoint.h"
-#include "filtercurve.h"
+
+#include <memory>
 
 typedef enum SplinePart {
     SplineLeft,
@@ -40,7 +43,7 @@ signals:
 
 private:
     QPointF p0, p1, c1, c2, ip;
-    QPainterPath lineSpline, fillSpline;
+    std::unique_ptr<QPainterPath> lineSpline, fillSpline;
 };
 
 #endif // PEAKINGCURVE_H

@@ -1,5 +1,6 @@
 #include "macro.h"
 #include "shelfcurve.h"
+#include <QtGlobal>
 #include <QDebug>
 #include <QGraphicsScene>
 #include <QPainter>
@@ -11,8 +12,12 @@ ShelfCurve::ShelfCurve(QPen pen, QBrush brush, bool guiOnly, QObject *parent)
 {
     setZValue(100000);
 
-    lineCurve.reserve(CURVE_CAPACITY);
-    fillCurve.reserve(CURVE_CAPACITY);
+    lineCurve = std::unique_ptr<QPainterPath>(new QPainterPath());
+    fillCurve = std::unique_ptr<QPainterPath>(new QPainterPath());
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    lineCurve->reserve(CURVE_CAPACITY);
+    fillCurve->reserve(CURVE_CAPACITY);
+#endif
 }
 
 ShelfCurve::~ShelfCurve()
@@ -24,8 +29,8 @@ void ShelfCurve::paint(QPainter *painter, const QStyleOptionGraphicsItem *option
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(getActivePen());
-    painter->drawPath(lineCurve);
-    painter->fillPath(fillCurve, getActiveBrush());
+    painter->drawPath(*lineCurve);
+    painter->fillPath(*fillCurve, getActiveBrush());
 #if 0
     // debugging - draw control points
     QPen rpen(Qt::red);
@@ -107,19 +112,31 @@ QPainterPath ShelfCurve::bezierPainter() const
 
 void ShelfCurve::updateCurveGeometry()
 {
-    lineCurve.clear();
-    lineCurve.moveTo(p0);
-    lineCurve.cubicTo(p1, clampP2(), p3);
-    Q_ASSERT(lineCurve.elementCount() == 4);
-    Q_ASSERT(lineCurve.capacity() == CURVE_CAPACITY);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    lineCurve->clear();
+#else
+    lineCurve.reset(new QPainterPath());
+#endif
+    lineCurve->moveTo(p0);
+    lineCurve->cubicTo(p1, clampP2(), p3);
+    Q_ASSERT(lineCurve->elementCount() == 4);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    Q_ASSERT(lineCurve->capacity() == CURVE_CAPACITY);
+#endif
 
-    fillCurve.clear();
-    fillCurve.moveTo(p0);
-    fillCurve.cubicTo(p1, clampP2(), p3);
-    fillCurve.lineTo(0, 0);
-    fillCurve.lineTo(p0);
-    Q_ASSERT(fillCurve.elementCount() <= 6);
-    Q_ASSERT(fillCurve.capacity() == CURVE_CAPACITY);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    fillCurve->clear();
+#else
+    fillCurve.reset(new QPainterPath());
+#endif
+    fillCurve->moveTo(p0);
+    fillCurve->cubicTo(p1, clampP2(), p3);
+    fillCurve->lineTo(0, 0);
+    fillCurve->lineTo(p0);
+    Q_ASSERT(fillCurve->elementCount() <= 6);
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 13, 0))
+    Q_ASSERT(fillCurve->capacity() == CURVE_CAPACITY);
+#endif
 }
 
 QRectF ShelfCurve::boundingRect() const

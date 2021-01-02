@@ -3,10 +3,13 @@
 
 #include "curvepoint.h"
 #include "filtercurve.h"
+
 #include <QBrush>
 #include <QGraphicsItem>
 #include <QObject>
 #include <QPen>
+
+#include <memory>
 
 #define SLOPE_DELTA 20
 #define SLOPE_MAX 330
@@ -43,7 +46,7 @@ signals:
 
 private:
     QPointF p0, p1, p2, p3;
-    QPainterPath lineCurve, fillCurve;
+    std::unique_ptr<QPainterPath> lineCurve, fillCurve;
     friend class LowShelfCurve;
     friend class HighShelfCurve;
 };
