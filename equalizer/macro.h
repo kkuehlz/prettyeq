@@ -10,6 +10,9 @@
         a = _tmp_;              \
     })
 
+#define BOX_USERDATA(var) ((void *) ((uint64_t) (var)))
+#define UNBOX_USERDATA(type, var) ((type) ((uint64_t) (var)))
+
 #define _likely_(x)      __builtin_expect(!!(x), 1)
 #define _unlikely_(x)    __builtin_expect(!!(x), 0)
 

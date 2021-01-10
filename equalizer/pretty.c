@@ -152,13 +152,44 @@ static void subscribe_callback(
         pa_operation_unref(pa_context_get_sink_input_info(c, idx, sink_input_callback, NULL));
 }
 
+static void null_source_output_callback(pa_context *c, const pa_source_output_info *i, int is_last, void *userdata) {
+    uint32_t prettyeq_source = UNBOX_USERDATA(uint32_t, userdata);
+
+    assert(c);
+
+    if (is_last < 0) {
+        fprintf(stderr, "Failed to get null source output information: %s\n",
+                         pa_strerror(pa_context_errno(c)));
+        quit(1);
+        return;
+    }
+
+    if (is_last)
+        return;
+
+    assert(i);
+
+    if (prettyeq_source == i->source) {
+        /* The recording stream sometimes starts at 79% instead of 100%, so
+         * let's fix that here or else we start at a lower volume. */
+        pa_cvolume volume;
+        volume = i->volume;
+        pa_cvolume_reset(&volume, i->sample_spec.channels);
+        pa_operation_unref(pa_context_set_source_output_volume(c,
+                                                            i->index,
+                                                            &volume,
+                                                            success_callback,
+                                                            NULL));
+    }
+}
+
 static void null_sink_info_callback(pa_context *c, const pa_sink_info *i, int is_last, void *userdata) {
     pa_buffer_attr buffer_attr;
 
     assert(c);
 
     if (is_last < 0) {
-        fprintf(stderr, "Failed to get null sink information: %s",
+        fprintf(stderr, "Failed to get null sink information: %s\n",
                          pa_strerror(pa_context_errno(c)));
         quit(1);
         return;
@@ -181,6 +212,9 @@ static void null_sink_info_callback(pa_context *c, const pa_sink_info *i, int is
         quit(1);
     }
     fprintf(stderr, "monitor source name=%s\n", i->monitor_source_name);
+    pa_operation_unref(pa_context_get_source_output_info_list(c,
+                                                              null_source_output_callback,
+                                                              BOX_USERDATA(i->monitor_source)));
 }
 
 static void unload_module_callback(pa_context *c, int success, void *userdata) {
